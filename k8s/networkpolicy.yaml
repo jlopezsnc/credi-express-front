@@ -1,0 +1,24 @@
+# El front solo recibe tráfico del balanceador de GKE y no inicia conexiones salientes
+# (no habla con la base de datos ni con el back: el navegador llama a /api vía Ingress).
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: crediexpress-front
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: crediexpress-front
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    - from:
+        # Rangos de los health checks y del balanceador externo de Google Cloud.
+        - ipBlock:
+            cidr: 35.191.0.0/16
+        - ipBlock:
+            cidr: 130.211.0.0/22
+      ports:
+        - protocol: TCP
+          port: 8080
+  egress: []

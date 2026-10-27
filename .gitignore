@@ -1,0 +1,24 @@
+# Dependencias y build
+node_modules/
+dist/
+dev-dist/
+coverage/
+*.tsbuildinfo
+
+# Playwright
+test-results/
+playwright-report/
+playwright/.cache/
+
+# Variables de entorno locales (nunca subir secretos)
+.env
+.env.*
+!.env.example
+
+# Editor / SO
+.vscode/*
+!.vscode/extensions.json
+.idea/
+.DS_Store
+Thumbs.db
+*.log

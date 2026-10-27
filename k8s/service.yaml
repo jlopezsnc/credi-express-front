@@ -1,0 +1,18 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: crediexpress-front
+  labels:
+    app.kubernetes.io/name: crediexpress-front
+    app.kubernetes.io/part-of: crediexpress
+  annotations:
+    # NEG para el Ingress de GKE (balanceo nativo de contenedores).
+    cloud.google.com/neg: '{"ingress": true}'
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: crediexpress-front
+  ports:
+    - name: http
+      port: 80
+      targetPort: http
