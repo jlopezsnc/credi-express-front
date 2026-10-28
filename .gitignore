@@ -23,3 +23,8 @@ playwright/.cache/
 .DS_Store
 Thumbs.db
 *.log
+
+# Llaves SSH (nunca subirlas)
+mySSHKey
+mySSHKey.pub
+*.pem

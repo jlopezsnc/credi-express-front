@@ -41,14 +41,14 @@ export default tseslint.config(
       'no-restricted-syntax': [
         'error',
         {
-          selector: "CallExpression[callee.property.name=/^bypassSecurityTrust/]",
+          selector: 'CallExpression[callee.property.name=/^bypassSecurityTrust/]',
           message: 'Prohibido bypassSecurityTrust* (desactiva la protección XSS de Angular).',
         },
         {
           selector:
             "Decorator[expression.callee.name='Component'] Property[key.name=/^(styles|styleUrl|styleUrls)$/]",
           message:
-            "Sin estilos por componente: Angular los inyecta en línea y la CSP los bloquea. Usa clases de Tailwind.",
+            'Sin estilos por componente: Angular los inyecta en línea y la CSP los bloquea. Usa clases de Tailwind.',
         },
       ],
       'no-restricted-properties': [
@@ -63,6 +63,8 @@ export default tseslint.config(
       'no-eval': 'error',
       '@typescript-eslint/no-implied-eval': 'error',
       '@typescript-eslint/no-extraneous-class': ['error', { allowWithDecorator: true }],
+      // Falso positivo con los validadores estáticos de Angular (`Validators.required`).
+      '@typescript-eslint/unbound-method': 'off',
       'no-console': ['warn', { allow: ['warn', 'error'] }],
       eqeqeq: ['error', 'always'],
     },

@@ -32,7 +32,7 @@ export class App {
   protected readonly mensajeError = computed(() => {
     const error = this.errorGlobal.error();
     if (error === undefined) return undefined;
-    if (isDevMode()) return error instanceof Error ? error.message : String(error);
+    if (isDevMode()) return error instanceof Error ? error.message : 'Error desconocido';
     return 'Ocurrió un error inesperado. Recarga la página o intenta más tarde.';
   });
 

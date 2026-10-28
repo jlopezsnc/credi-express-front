@@ -1,4 +1,4 @@
-import { provideHttpClient, withFetch, withInterceptors } from '@angular/common/http';
+import { provideHttpClient, withInterceptors } from '@angular/common/http';
 import {
   type ApplicationConfig,
   ErrorHandler,
@@ -17,7 +17,7 @@ export const appConfig: ApplicationConfig = {
     provideBrowserGlobalErrorListeners(),
     { provide: ErrorHandler, useExisting: ErrorGlobal },
     provideRouter(routes, withComponentInputBinding()),
-    provideHttpClient(withFetch(), withInterceptors([authInterceptor, errorInterceptor])),
+    provideHttpClient(withInterceptors([authInterceptor, errorInterceptor])),
     // Solo se precachea el shell estático (ngsw-config.json). Las respuestas de la API (datos
     // personales) no se guardan en caché hasta diseñar el modo sin conexión de cobranza.
     provideServiceWorker('ngsw-worker.js', {

@@ -31,8 +31,7 @@ export const errorInterceptor: HttpInterceptorFn = (req, next) => {
     catchError((error: unknown) => {
       if (!(error instanceof HttpErrorResponse)) return throwError(() => error);
       const body = (typeof error.error === 'object' ? error.error : undefined) as
-        | ApiErrorBody
-        | undefined;
+        ApiErrorBody | undefined;
       return throwError(() => new ApiError(error.status, body ?? undefined));
     }),
   );
