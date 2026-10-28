@@ -1,0 +1,41 @@
+<main class="mx-auto flex min-h-svh max-w-sm flex-col justify-center p-4">
+  <h1 class="mb-6 text-2xl font-semibold">Iniciar sesión</h1>
+  <form novalidate [formGroup]="form" (ngSubmit)="entrar()" class="space-y-4">
+    <label class="block">
+      <span class="text-sm font-medium">Correo</span>
+      <input
+        type="email"
+        autocomplete="username"
+        formControlName="correo"
+        class="border-input bg-background mt-1 w-full rounded-md border px-3 py-2"
+        [attr.aria-invalid]="enviado() && form.controls.correo.invalid ? true : null"
+      />
+      @if (enviado() && form.controls.correo.invalid) {
+        <span class="text-destructive text-sm">Correo inválido</span>
+      }
+    </label>
+    <label class="block">
+      <span class="text-sm font-medium">Contraseña</span>
+      <input
+        type="password"
+        autocomplete="current-password"
+        formControlName="contrasena"
+        class="border-input bg-background mt-1 w-full rounded-md border px-3 py-2"
+        [attr.aria-invalid]="enviado() && form.controls.contrasena.invalid ? true : null"
+      />
+      @if (enviado() && form.controls.contrasena.invalid) {
+        <span class="text-destructive text-sm">Captura tu contraseña</span>
+      }
+    </label>
+    @if (error(); as mensaje) {
+      <p role="alert" class="text-destructive text-sm">{{ mensaje }}</p>
+    }
+    <button
+      type="submit"
+      [disabled]="enviando()"
+      class="bg-primary text-primary-foreground w-full rounded-md px-4 py-2 font-medium disabled:opacity-50"
+    >
+      {{ enviando() ? 'Entrando…' : 'Entrar' }}
+    </button>
+  </form>
+</main>

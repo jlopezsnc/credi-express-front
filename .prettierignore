@@ -1,9 +1,10 @@
 dist
-dev-dist
+.angular
 coverage
 node_modules
 playwright-report
 test-results
 package-lock.json
-src/lib/api/schema.d.ts
+src/app/core/api/schema.d.ts
+src/environments/env.ts
 docs

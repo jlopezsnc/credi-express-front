@@ -1,42 +1,54 @@
 import js from '@eslint/js';
+import angular from 'angular-eslint';
 import prettier from 'eslint-config-prettier';
-import reactHooks from 'eslint-plugin-react-hooks';
-import reactRefresh from 'eslint-plugin-react-refresh';
-import globals from 'globals';
 import tseslint from 'typescript-eslint';
 
 export default tseslint.config(
   {
     ignores: [
       'dist',
-      'dev-dist',
+      '.angular',
       'coverage',
       'playwright-report',
       'test-results',
-      'src/lib/api/schema.d.ts',
+      'src/app/core/api/schema.d.ts',
+      'src/environments/env.ts',
     ],
   },
   {
-    files: ['**/*.{ts,tsx}'],
-    extends: [js.configs.recommended, ...tseslint.configs.strictTypeChecked, prettier],
+    files: ['src/**/*.ts'],
+    extends: [
+      js.configs.recommended,
+      ...tseslint.configs.strictTypeChecked,
+      ...angular.configs.tsRecommended,
+      prettier,
+    ],
     languageOptions: {
-      ecmaVersion: 2022,
-      globals: globals.browser,
       parserOptions: { projectService: true, tsconfigRootDir: import.meta.dirname },
     },
-    plugins: {
-      'react-hooks': reactHooks,
-      'react-refresh': reactRefresh,
-    },
+    processor: angular.processInlineTemplates,
     rules: {
-      ...reactHooks.configs.recommended.rules,
-      'react-refresh/only-export-components': ['warn', { allowConstantExport: true }],
+      '@angular-eslint/directive-selector': [
+        'error',
+        { type: 'attribute', prefix: 'app', style: 'camelCase' },
+      ],
+      '@angular-eslint/component-selector': [
+        'error',
+        { type: 'element', prefix: 'app', style: 'kebab-case' },
+      ],
+      '@angular-eslint/prefer-on-push-component-change-detection': 'error',
       // Reglas OWASP del proyecto (docs §5.2)
       'no-restricted-syntax': [
         'error',
         {
-          selector: "JSXAttribute[name.name='dangerouslySetInnerHTML']",
-          message: 'Prohibido dangerouslySetInnerHTML (XSS).',
+          selector: "CallExpression[callee.property.name=/^bypassSecurityTrust/]",
+          message: 'Prohibido bypassSecurityTrust* (desactiva la protección XSS de Angular).',
+        },
+        {
+          selector:
+            "Decorator[expression.callee.name='Component'] Property[key.name=/^(styles|styleUrl|styleUrls)$/]",
+          message:
+            "Sin estilos por componente: Angular los inyecta en línea y la CSP los bloquea. Usa clases de Tailwind.",
         },
       ],
       'no-restricted-properties': [
@@ -50,12 +62,18 @@ export default tseslint.config(
       ],
       'no-eval': 'error',
       '@typescript-eslint/no-implied-eval': 'error',
+      '@typescript-eslint/no-extraneous-class': ['error', { allowWithDecorator: true }],
       'no-console': ['warn', { allow: ['warn', 'error'] }],
       eqeqeq: ['error', 'always'],
     },
   },
   {
-    files: ['src/components/ui/**/*.{ts,tsx}'],
-    rules: { 'react-refresh/only-export-components': 'off' },
+    files: ['src/**/*.html'],
+    extends: [...angular.configs.templateRecommended, ...angular.configs.templateAccessibility],
+    rules: {
+      // Atributos style en línea: la CSP (style-src 'self') los bloquea.
+      '@angular-eslint/template/no-inline-styles': 'error',
+      '@angular-eslint/template/prefer-control-flow': 'error',
+    },
   },
 );

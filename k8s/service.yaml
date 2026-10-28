@@ -6,8 +6,9 @@ metadata:
     app.kubernetes.io/name: crediexpress-front
     app.kubernetes.io/part-of: crediexpress
   annotations:
-    # NEG para el Ingress de GKE (balanceo nativo de contenedores).
+    # NEG: el balanceador llega directo a los pods. BackendConfig: Cloud Armor + health check.
     cloud.google.com/neg: '{"ingress": true}'
+    cloud.google.com/backend-config: '{"default": "crediexpress-front"}'
 spec:
   type: ClusterIP
   selector:

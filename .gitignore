@@ -1,7 +1,8 @@
 # Dependencias y build
 node_modules/
 dist/
-dev-dist/
+.angular/
+src/environments/env.ts
 coverage/
 *.tsbuildinfo
 

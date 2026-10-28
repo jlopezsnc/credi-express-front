@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
     Despliegue manual del front de Credi Express en GKE (docs §3.4).
 
@@ -35,7 +35,7 @@ $imagen = "$Region-docker.pkg.dev/$Proyecto/crediexpress/front:$Version"
 $envFile = Join-Path $raiz '.env.production.local'
 if (-not (Test-Path $envFile)) { throw "Falta $envFile (copiar de .env.example)." }
 $buildArgs = Get-Content $envFile |
-    Where-Object { $_ -match '^\s*VITE_[A-Z_]+=' } |
+    Where-Object { $_ -match '^\s*NG_APP_[A-Z_]+=' } |
     ForEach-Object { '--build-arg'; $_.Trim() }
 
 Invoke-Paso 'Instalar dependencias' { npm ci }
@@ -45,13 +45,17 @@ $existe = git tag --list "front-v$Version"
 if ($existe) { throw "La versión $Version ya existe (tag front-v$Version). Usa una versión nueva." }
 
 Invoke-Paso 'Construir imagen' { docker build @buildArgs -t $imagen . }
+Invoke-Paso 'Autorizar Docker con Artifact Registry' { gcloud auth configure-docker "$Region-docker.pkg.dev" --quiet }
 Invoke-Paso 'Publicar imagen en Artifact Registry' { docker push $imagen }
 Invoke-Paso 'Obtener credenciales del clúster' {
     gcloud container clusters get-credentials $Cluster --region $Region --project $Proyecto
 }
 
+Invoke-Paso 'Validar manifiestos en el clúster' {
+    kubectl apply -n $Namespace --dry-run=server -f k8s/backendconfig.yaml -f k8s/service.yaml -f k8s/networkpolicy.yaml
+}
 Invoke-Paso 'Aplicar manifiestos' {
-    kubectl apply -n $Namespace -f k8s/service.yaml -f k8s/networkpolicy.yaml
+    kubectl apply -n $Namespace -f k8s/backendconfig.yaml -f k8s/service.yaml -f k8s/networkpolicy.yaml
 }
 Invoke-Paso 'Aplicar Deployment con la nueva imagen' {
     (Get-Content k8s/deployment.yaml -Raw) -replace 'image: .+/front:[^\s]+', "image: $imagen" |
