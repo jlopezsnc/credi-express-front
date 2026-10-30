@@ -1,0 +1,331 @@
+<header>
+  <p class="text-muted-foreground mb-1.5 text-[13px] font-semibold">Operación / Préstamos</p>
+  <h1 class="text-[26px] font-extrabold tracking-tight lg:text-[32px]">Préstamos</h1>
+  <p class="text-muted-foreground mt-1.5 text-sm">
+    Préstamos otorgados: avance de pagos, saldo pendiente y calendario de cada uno.
+  </p>
+</header>
+
+<div class="flex flex-wrap items-center gap-3">
+  <label
+    class="border-border bg-card text-muted-foreground focus-within:border-primary focus-within:ring-primary-soft flex min-h-11 flex-[1_1_100%] items-center gap-2.5 rounded-lg border px-3.5 focus-within:ring-3 lg:max-w-110 lg:flex-[1_1_300px]"
+  >
+    <app-icono nombre="buscar" />
+    <input
+      type="search"
+      placeholder="Buscar por cliente"
+      aria-label="Buscar por cliente"
+      class="text-foreground placeholder:text-muted-foreground w-full min-w-0 bg-transparent text-sm outline-none"
+      [value]="busqueda()"
+      (input)="alBuscar($event)"
+    />
+  </label>
+  <div class="hidden flex-1 lg:block"></div>
+  <a routerLink="/prestamos/nuevo" class="btn-primario flex-[1_1_100%] lg:flex-none">
+    <app-icono nombre="mas" />
+    Nuevo préstamo
+  </a>
+</div>
+
+<div
+  role="group"
+  aria-label="Filtrar préstamos"
+  class="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 lg:mx-0 lg:flex-wrap lg:overflow-visible lg:px-0 lg:pb-0"
+>
+  @for (f of filtros(); track f.id) {
+    @let activo = filtro() === f.id;
+    <button
+      type="button"
+      [attr.aria-pressed]="activo"
+      class="inline-flex min-h-9 shrink-0 cursor-pointer items-center gap-2 rounded-full border px-3.5 text-[13px] font-semibold whitespace-nowrap"
+      [class]="
+        activo
+          ? 'bg-foreground text-card border-foreground'
+          : 'bg-card text-muted-foreground hover:text-foreground'
+      "
+      (click)="filtro.set(f.id)"
+    >
+      {{ f.etiqueta }}
+      <span
+        class="rounded-full px-1.75 py-px text-xs tabular-nums"
+        [class]="activo ? 'bg-neutral-500/30' : 'bg-accent text-foreground'"
+      >
+        {{ f.cantidad }}
+      </span>
+    </button>
+  }
+</div>
+
+@if (cargandoInicial()) {
+  <div class="tarjeta text-muted-foreground px-6 py-12 text-center text-sm" aria-busy="true">
+    Cargando préstamos…
+  </div>
+} @else if (servicio.error() && total() === 0) {
+  <div role="alert" class="tarjeta px-6 py-12 text-center">
+    <p class="text-base font-bold">No se pudo cargar la lista</p>
+    <p class="text-muted-foreground mt-1.5 text-sm">{{ servicio.error() }}</p>
+    <button type="button" class="btn-secundario mt-4" (click)="servicio.cargar()">
+      Reintentar
+    </button>
+  </div>
+} @else {
+  @if (servicio.error(); as error) {
+    <div
+      role="alert"
+      class="bg-destructive-soft text-destructive flex flex-wrap items-center justify-between gap-3 rounded-lg px-4 py-3 text-sm font-semibold"
+    >
+      {{ error }}
+      <button type="button" class="btn-secundario min-h-9" (click)="servicio.cargar()">
+        Reintentar
+      </button>
+    </div>
+  }
+
+  <!-- Escritorio: tabla -->
+  <section class="tarjeta hidden overflow-hidden lg:block" aria-label="Lista de préstamos">
+    <div class="overflow-x-auto">
+      <table class="w-full border-collapse text-sm">
+        <thead>
+          <tr
+            class="bg-muted text-muted-foreground text-left text-xs font-bold tracking-wider uppercase [&>th]:border-b [&>th]:px-3 [&>th]:py-3 [&>th]:whitespace-nowrap [&>th:first-child]:pl-4.5 [&>th:last-child]:pr-4.5"
+          >
+            <th scope="col">Cliente</th>
+            <th scope="col">Pagos</th>
+            <th scope="col" class="text-right">Cuota</th>
+            <th scope="col" class="hidden text-right 2xl:table-cell">Total</th>
+            <th scope="col" class="text-right">Saldo pendiente</th>
+            <th scope="col">Próximo pago</th>
+            <th scope="col">Estado</th>
+            <th scope="col"><span class="sr-only">Acciones</span></th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (fila of filas(); track fila.prestamo.id) {
+            <tr
+              class="hover:bg-accent [&>td]:border-b [&>td]:px-3 [&>td]:py-3.5 [&>td]:whitespace-nowrap last:[&>td]:border-b-0 [&>td:first-child]:pl-4.5 [&>td:last-child]:pr-4.5"
+            >
+              <td>
+                <div class="flex items-center gap-3">
+                  <span
+                    class="inline-flex size-9.5 shrink-0 items-center justify-center rounded-full text-[13px] font-extrabold"
+                    [class]="fila.avatar"
+                  >
+                    {{ fila.iniciales }}
+                  </span>
+                  <div>
+                    <div class="font-bold">{{ fila.prestamo.cliente }}</div>
+                    <div class="text-muted-foreground mt-0.5 text-xs">
+                      Préstamo #{{ fila.prestamo.id }} · {{ fila.prestamo.modalidad }}
+                    </div>
+                  </div>
+                </div>
+              </td>
+              <td class="tabular-nums">{{ fila.avance }}</td>
+              <td class="text-right tabular-nums">{{ fila.cuota }}</td>
+              <td class="hidden text-right tabular-nums 2xl:table-cell">{{ fila.total }}</td>
+              <td class="text-right font-bold tabular-nums">{{ fila.saldo }}</td>
+              <td class="tabular-nums">{{ fila.proximo }}</td>
+              <td>
+                <span
+                  class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-bold whitespace-nowrap before:size-1.5 before:rounded-full before:bg-current"
+                  [class]="fila.estado.clase"
+                >
+                  {{ fila.estado.texto }}
+                </span>
+              </td>
+              <td class="text-right">
+                <button
+                  type="button"
+                  class="btn-secundario min-h-9 px-3 text-[13px]"
+                  [attr.aria-label]="
+                    'Ver calendario del préstamo ' +
+                    fila.prestamo.id +
+                    ' de ' +
+                    fila.prestamo.cliente
+                  "
+                  (click)="enDetalle.set(fila.prestamo)"
+                >
+                  <app-icono nombre="cobranza" class="size-4" />
+                  Calendario
+                </button>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+    @if (filas().length === 0) {
+      <div class="px-6 py-12 text-center">
+        <p class="text-base font-bold">Sin coincidencias</p>
+        <p class="text-muted-foreground mt-1.5 text-sm">
+          No hay préstamos que coincidan con la búsqueda o el filtro.
+        </p>
+      </div>
+    }
+    <div
+      class="text-muted-foreground flex items-center justify-between gap-3 border-t px-4.5 py-3.5 text-[13px]"
+    >
+      <span>Mostrando {{ filas().length }} de {{ total() }} préstamos</span>
+      @if (servicio.cargando()) {
+        <span>Actualizando…</span>
+      }
+    </div>
+  </section>
+
+  <!-- Teléfono: tarjetas -->
+  <section class="grid grid-cols-1 gap-3 lg:hidden" aria-label="Lista de préstamos">
+    @for (fila of filas(); track fila.prestamo.id) {
+      <article class="tarjeta p-4">
+        <div class="flex items-center gap-3">
+          <span
+            class="inline-flex size-9.5 shrink-0 items-center justify-center rounded-full text-[13px] font-extrabold"
+            [class]="fila.avatar"
+          >
+            {{ fila.iniciales }}
+          </span>
+          <div class="min-w-0 flex-1">
+            <div class="truncate text-[15px] font-bold">{{ fila.prestamo.cliente }}</div>
+            <div class="text-muted-foreground mt-0.5 text-xs">
+              Préstamo #{{ fila.prestamo.id }} · {{ fila.prestamo.modalidad }}
+            </div>
+          </div>
+          <span
+            class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-bold whitespace-nowrap before:size-1.5 before:rounded-full before:bg-current"
+            [class]="fila.estado.clase"
+          >
+            {{ fila.estado.texto }}
+          </span>
+        </div>
+        <dl class="mt-3.5 grid grid-cols-2 gap-x-4 gap-y-2 text-[13px]">
+          <div>
+            <dt class="text-muted-foreground">Pagos</dt>
+            <dd class="font-bold tabular-nums">{{ fila.avance }}</dd>
+          </div>
+          <div>
+            <dt class="text-muted-foreground">Cuota</dt>
+            <dd class="font-bold tabular-nums">{{ fila.cuota }}</dd>
+          </div>
+          <div>
+            <dt class="text-muted-foreground">Próximo pago</dt>
+            <dd class="font-bold tabular-nums">{{ fila.proximo }}</dd>
+          </div>
+          <div>
+            <dt class="text-muted-foreground">Saldo pendiente</dt>
+            <dd class="font-extrabold tabular-nums">{{ fila.saldo }}</dd>
+          </div>
+        </dl>
+        <button
+          type="button"
+          class="btn-secundario mt-3 w-full px-3 text-[13px]"
+          [attr.aria-label]="
+            'Ver calendario del préstamo ' + fila.prestamo.id + ' de ' + fila.prestamo.cliente
+          "
+          (click)="enDetalle.set(fila.prestamo)"
+        >
+          <app-icono nombre="cobranza" class="size-4" />
+          Ver calendario
+        </button>
+      </article>
+    }
+    @if (filas().length === 0) {
+      <div class="tarjeta px-5 py-8 text-center">
+        <p class="font-bold">Sin coincidencias</p>
+        <p class="text-muted-foreground mt-1.5 text-sm">
+          No hay préstamos que coincidan con la búsqueda o el filtro.
+        </p>
+      </div>
+    }
+    <p class="text-muted-foreground mt-1 text-center text-[13px]">
+      Mostrando {{ filas().length }} de {{ total() }} préstamos
+    </p>
+  </section>
+}
+
+@if (detalle(); as d) {
+  <dialog
+    appDialogoModal
+    aria-labelledby="t-detalle"
+    class="bg-card text-foreground backdrop:bg-overlay mx-0 mt-auto mb-0 max-h-[94%] w-full max-w-none rounded-t-3xl border border-b-0 p-0 shadow-2xl sm:m-auto sm:max-h-[calc(100%-3rem)] sm:max-w-140 sm:rounded-2xl sm:border-b"
+    (cerrar)="enDetalle.set(undefined)"
+  >
+    <div class="flex items-start justify-between gap-4 px-6 pt-6 pb-2">
+      <div class="min-w-0">
+        <h2 id="t-detalle" class="text-xl font-extrabold">{{ d.prestamo.cliente }}</h2>
+        <p class="text-muted-foreground mt-1 text-sm">
+          Préstamo #{{ d.prestamo.id }} · {{ d.prestamo.cuotas.length }} pagos
+          {{ d.prestamo.modalidad.toLowerCase() }}es
+        </p>
+      </div>
+      <button
+        type="button"
+        class="btn-icono"
+        aria-label="Cerrar"
+        (click)="enDetalle.set(undefined)"
+      >
+        <app-icono nombre="cerrar" />
+      </button>
+    </div>
+
+    <dl class="grid grid-cols-3 gap-3 px-6 py-3 text-sm">
+      <div>
+        <dt class="text-muted-foreground text-xs">Total</dt>
+        <dd class="font-bold tabular-nums">{{ d.total }}</dd>
+      </div>
+      <div>
+        <dt class="text-muted-foreground text-xs">Saldo pendiente</dt>
+        <dd class="font-extrabold tabular-nums">{{ d.saldo }}</dd>
+      </div>
+      <div>
+        <dt class="text-muted-foreground text-xs">Estado</dt>
+        <dd>
+          <span
+            class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-bold whitespace-nowrap before:size-1.5 before:rounded-full before:bg-current"
+            [class]="d.estado.clase"
+          >
+            {{ d.estado.texto }}
+          </span>
+        </dd>
+      </div>
+    </dl>
+    @if (d.vencidas > 0) {
+      <p
+        class="bg-atraso-soft text-atraso mx-6 mb-1 rounded-lg px-3.5 py-2.5 text-[13px] font-semibold"
+      >
+        {{ d.vencidas === 1 ? '1 pago vencido' : d.vencidas + ' pagos vencidos' }} sin registrar.
+      </p>
+    }
+
+    <div class="px-6 pt-2 pb-6">
+      <table class="w-full border-collapse text-[13px]">
+        <thead>
+          <tr
+            class="text-muted-foreground text-left text-[11px] font-bold tracking-wider uppercase [&>th]:border-b [&>th]:py-2"
+          >
+            <th scope="col">#</th>
+            <th scope="col">Vence</th>
+            <th scope="col" class="text-right">Importe</th>
+            <th scope="col" class="pl-3">Estado</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (c of d.cuotas; track c.id) {
+            <tr class="tabular-nums [&>td]:border-b [&>td]:py-2.25 last:[&>td]:border-b-0">
+              <td class="text-muted-foreground">{{ c.numero }}</td>
+              <td>{{ c.vence }}</td>
+              <td class="text-right font-bold">{{ c.importe }}</td>
+              <td class="pl-3">
+                <span
+                  class="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-bold whitespace-nowrap"
+                  [class]="c.estado.clase"
+                  [attr.title]="c.pagada ? 'Pagada el ' + c.pagada : null"
+                >
+                  {{ c.estado.texto }}
+                </span>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  </dialog>
+}

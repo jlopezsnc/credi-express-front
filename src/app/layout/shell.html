@@ -1,0 +1,154 @@
+<div
+  class="group flex min-h-svh"
+  [attr.data-colapsado]="colapsado() ? '' : null"
+  [attr.data-abierto]="menuAbierto() ? '' : null"
+>
+  <!-- Velo del cajón en el teléfono -->
+  <button
+    type="button"
+    tabindex="-1"
+    aria-label="Cerrar menú"
+    class="bg-overlay pointer-events-none fixed inset-0 z-30 opacity-0 transition-opacity group-data-abierto:pointer-events-auto group-data-abierto:opacity-100 lg:hidden"
+    (click)="menuAbierto.set(false)"
+  ></button>
+
+  <aside
+    aria-label="Menú principal"
+    [inert]="!esEscritorio() && !menuAbierto()"
+    class="bg-card group-data-abierto:shadow-tarjeta fixed inset-y-0 left-0 z-40 flex w-71 -translate-x-full flex-col gap-2 overflow-hidden border-r px-3.5 py-5 transition-[width,translate] duration-200 group-data-abierto:translate-x-0 lg:sticky lg:top-0 lg:h-svh lg:w-66 lg:translate-x-0 lg:group-data-colapsado:w-19"
+  >
+    <div
+      class="mb-3 flex min-h-12 items-center gap-3 px-1.5 lg:group-data-colapsado:justify-center"
+    >
+      <span
+        class="bg-primary text-primary-foreground inline-flex size-10 shrink-0 items-center justify-center rounded-xl"
+      >
+        <app-icono nombre="marca" />
+      </span>
+      <span class="min-w-0 flex-1 lg:group-data-colapsado:hidden">
+        <span class="block text-[17px] font-extrabold tracking-tight">Credi Express</span>
+        <span class="text-muted-foreground block text-xs">Préstamos y cobranza</span>
+      </span>
+      <button
+        type="button"
+        class="btn-icono lg:hidden"
+        aria-label="Cerrar menú"
+        (click)="menuAbierto.set(false)"
+      >
+        <app-icono nombre="cerrar" />
+      </button>
+    </div>
+
+    <span
+      class="text-muted-foreground mb-0.5 px-3.5 text-[11px] font-bold tracking-widest uppercase lg:group-data-colapsado:hidden"
+    >
+      Operación
+    </span>
+    <nav class="flex flex-col gap-1">
+      @for (seccion of secciones; track seccion.ruta) {
+        <a
+          [routerLink]="seccion.ruta"
+          routerLinkActive="bg-primary-soft! text-primary-ink!"
+          ariaCurrentWhenActive="page"
+          [routerLinkActiveOptions]="{ exact: seccion.ruta === '/' }"
+          [title]="seccion.etiqueta"
+          class="text-muted-foreground hover:bg-accent hover:text-foreground flex min-h-11 items-center gap-3 rounded-lg px-3.5 text-sm font-semibold whitespace-nowrap transition-colors lg:group-data-colapsado:justify-center lg:group-data-colapsado:px-0"
+          (click)="menuAbierto.set(false)"
+        >
+          <app-icono [nombre]="seccion.icono" />
+          <span class="lg:group-data-colapsado:hidden">{{ seccion.etiqueta }}</span>
+        </a>
+      }
+    </nav>
+
+    <div class="flex-1"></div>
+
+    <div class="flex flex-col gap-1 border-t pt-3">
+      <button
+        type="button"
+        [title]="textoTema()"
+        class="text-muted-foreground hover:bg-accent hover:text-foreground flex min-h-11 cursor-pointer items-center gap-3 rounded-lg px-3.5 text-sm font-semibold whitespace-nowrap lg:group-data-colapsado:justify-center lg:group-data-colapsado:px-0"
+        (click)="tema.alternar()"
+      >
+        <app-icono [nombre]="esOscuro() ? 'sol' : 'luna'" />
+        <span class="lg:group-data-colapsado:hidden">{{ textoTema() }}</span>
+      </button>
+      <button
+        type="button"
+        [title]="colapsado() ? 'Expandir menú' : 'Contraer menú'"
+        [attr.aria-expanded]="!colapsado()"
+        class="text-muted-foreground hover:bg-accent hover:text-foreground hidden min-h-11 cursor-pointer items-center gap-3 rounded-lg px-3.5 text-sm font-semibold whitespace-nowrap lg:flex lg:group-data-colapsado:justify-center lg:group-data-colapsado:px-0"
+        (click)="alternarColapso()"
+      >
+        <app-icono nombre="colapsar" class="transition-transform group-data-colapsado:rotate-180" />
+        <span class="lg:group-data-colapsado:hidden">
+          {{ colapsado() ? 'Expandir menú' : 'Contraer menú' }}
+        </span>
+      </button>
+      <div class="flex items-center gap-3 px-1.5 pt-2.5 lg:group-data-colapsado:justify-center">
+        <span
+          class="bg-av0 text-av0-ink inline-flex size-9.5 shrink-0 items-center justify-center rounded-full text-[13px] font-extrabold"
+          [title]="nombreUsuario()"
+        >
+          {{ inicialesUsuario() }}
+        </span>
+        <span class="min-w-0 flex-1 lg:group-data-colapsado:hidden">
+          <span class="block truncate text-sm font-bold">{{ nombreUsuario() }}</span>
+          <span class="text-muted-foreground block text-xs">{{ rolUsuario() }}</span>
+        </span>
+        <button
+          type="button"
+          aria-label="Cerrar sesión"
+          title="Cerrar sesión"
+          class="btn-icono text-muted-foreground hover:text-foreground border-transparent bg-transparent lg:group-data-colapsado:hidden"
+          (click)="cerrarSesion()"
+        >
+          <app-icono nombre="salir" />
+        </button>
+      </div>
+    </div>
+  </aside>
+
+  <div class="flex min-w-0 flex-1 flex-col">
+    <header class="bg-card flex items-center gap-3 border-b px-4 py-3 lg:hidden">
+      <button
+        type="button"
+        class="btn-icono"
+        aria-label="Abrir menú"
+        [attr.aria-expanded]="menuAbierto()"
+        (click)="menuAbierto.set(true)"
+      >
+        <app-icono nombre="menu" />
+      </button>
+      <span class="flex-1 text-[17px] font-extrabold">Credi Express</span>
+      <button
+        type="button"
+        class="btn-icono"
+        [attr.aria-label]="textoTema()"
+        (click)="tema.alternar()"
+      >
+        <app-icono [nombre]="esOscuro() ? 'sol' : 'luna'" />
+      </button>
+    </header>
+
+    <main class="w-full max-w-7xl px-4 pt-5 pb-8 lg:px-10 lg:pt-9 lg:pb-12">
+      <router-outlet />
+    </main>
+  </div>
+</div>
+
+<div role="status" aria-live="polite">
+  @if (avisos.aviso(); as aviso) {
+    <div
+      class="fixed bottom-6 left-1/2 z-60 flex w-max max-w-[calc(100vw-2rem)] -translate-x-1/2 items-center gap-2.5 rounded-xl px-4.5 py-3 text-sm font-semibold shadow-xl"
+      [class]="
+        aviso.tipo === 'error'
+          ? 'bg-destructive text-destructive-foreground'
+          : 'bg-foreground text-background'
+      "
+    >
+      <app-icono [nombre]="aviso.tipo === 'error' ? 'alerta' : 'palomita'" />
+      {{ aviso.mensaje }}
+    </div>
+  }
+</div>

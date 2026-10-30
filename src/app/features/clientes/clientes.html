@@ -1,0 +1,343 @@
+<header>
+  <p class="text-muted-foreground mb-1.5 text-[13px] font-semibold">Operación / Clientes</p>
+  <h1 class="text-[26px] font-extrabold tracking-tight lg:text-[32px]">Clientes</h1>
+  <p class="text-muted-foreground mt-1.5 text-sm">
+    Catálogo de clientes: da de alta, edita, da de baja y revisa su estado.
+  </p>
+</header>
+
+<div class="flex flex-wrap items-center gap-3">
+  <label
+    class="border-border bg-card text-muted-foreground focus-within:border-primary focus-within:ring-primary-soft flex min-h-11 flex-[1_1_100%] items-center gap-2.5 rounded-lg border px-3.5 focus-within:ring-3 lg:max-w-110 lg:flex-[1_1_300px]"
+  >
+    <app-icono nombre="buscar" />
+    <input
+      type="search"
+      placeholder="Buscar por nombre o CURP"
+      aria-label="Buscar por nombre o CURP"
+      class="text-foreground placeholder:text-muted-foreground w-full min-w-0 bg-transparent text-sm outline-none"
+      [value]="busqueda()"
+      (input)="alBuscar($event)"
+    />
+  </label>
+  <div class="hidden flex-1 lg:block"></div>
+  <button
+    type="button"
+    class="btn-primario flex-[1_1_100%] lg:flex-none"
+    [disabled]="cargandoInicial()"
+    (click)="abrirFormulario(null)"
+  >
+    <app-icono nombre="mas" />
+    Nuevo cliente
+  </button>
+</div>
+
+<div
+  role="group"
+  aria-label="Filtrar clientes"
+  class="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 lg:mx-0 lg:flex-wrap lg:overflow-visible lg:px-0 lg:pb-0"
+>
+  @for (f of filtros(); track f.id) {
+    @let activo = filtro() === f.id;
+    <button
+      type="button"
+      [attr.aria-pressed]="activo"
+      class="inline-flex min-h-9 shrink-0 cursor-pointer items-center gap-2 rounded-full border px-3.5 text-[13px] font-semibold whitespace-nowrap"
+      [class]="
+        activo
+          ? 'bg-foreground text-card border-foreground'
+          : 'bg-card text-muted-foreground hover:text-foreground'
+      "
+      (click)="filtro.set(f.id)"
+    >
+      {{ f.etiqueta }}
+      <span
+        class="rounded-full px-1.75 py-px text-xs tabular-nums"
+        [class]="activo ? 'bg-neutral-500/30' : 'bg-accent text-foreground'"
+      >
+        {{ f.cantidad }}
+      </span>
+    </button>
+  }
+</div>
+
+@if (cargandoInicial()) {
+  <div class="tarjeta text-muted-foreground px-6 py-12 text-center text-sm" aria-busy="true">
+    Cargando clientes…
+  </div>
+} @else if (servicio.error() && total() === 0) {
+  <div role="alert" class="tarjeta px-6 py-12 text-center">
+    <p class="text-base font-bold">No se pudo cargar la lista</p>
+    <p class="text-muted-foreground mt-1.5 text-sm">{{ servicio.error() }}</p>
+    <button type="button" class="btn-secundario mt-4" (click)="servicio.cargar()">
+      Reintentar
+    </button>
+  </div>
+} @else {
+  @if (servicio.error(); as error) {
+    <div
+      role="alert"
+      class="bg-destructive-soft text-destructive flex flex-wrap items-center justify-between gap-3 rounded-lg px-4 py-3 text-sm font-semibold"
+    >
+      {{ error }}
+      <button type="button" class="btn-secundario min-h-9" (click)="servicio.cargar()">
+        Reintentar
+      </button>
+    </div>
+  }
+
+  <!-- Escritorio: tabla -->
+  <section class="tarjeta hidden overflow-hidden lg:block" aria-label="Lista de clientes">
+    <div class="overflow-x-auto">
+      <table class="w-full border-collapse text-sm">
+        <thead>
+          <tr
+            class="bg-muted text-muted-foreground text-left text-xs font-bold tracking-wider uppercase [&>th]:border-b [&>th]:px-3 [&>th]:py-3 [&>th]:whitespace-nowrap [&>th:first-child]:pl-4.5 [&>th:last-child]:pr-4.5"
+          >
+            <th scope="col">Cliente</th>
+            <th scope="col">CURP</th>
+            <th scope="col">Teléfono</th>
+            <th scope="col" class="hidden 2xl:table-cell">Ciudad</th>
+            <th scope="col" class="text-right">Préstamos</th>
+            <th scope="col" class="text-right">Saldo pendiente</th>
+            <th scope="col">Estado</th>
+            <th scope="col"><span class="sr-only">Acciones</span></th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (fila of filas(); track fila.cliente.id) {
+            <tr
+              class="hover:bg-accent [&>td]:border-b [&>td]:px-3 [&>td]:py-3.5 [&>td]:whitespace-nowrap last:[&>td]:border-b-0 [&>td:first-child]:pl-4.5 [&>td:last-child]:pr-4.5"
+            >
+              <td>
+                <div class="flex items-center gap-3">
+                  <span
+                    class="inline-flex size-9.5 shrink-0 items-center justify-center rounded-full text-[13px] font-extrabold"
+                    [class]="fila.avatar"
+                  >
+                    {{ fila.iniciales }}
+                  </span>
+                  <div>
+                    <div class="font-bold">{{ fila.cliente.nombreCompleto }}</div>
+                    <div class="text-muted-foreground mt-0.5 text-xs">
+                      {{ fila.cliente.correoElectronico || 'Sin correo' }}
+                    </div>
+                  </div>
+                </div>
+              </td>
+              <td class="font-mono text-[13px] tracking-wide">{{ fila.cliente.curp }}</td>
+              <td class="tabular-nums">{{ fila.cliente.telefono || '—' }}</td>
+              <td class="hidden 2xl:table-cell">{{ fila.cliente.domicilioCiudad || '—' }}</td>
+              <td class="text-right tabular-nums">{{ fila.prestamosNumero }}</td>
+              <td class="text-right font-bold tabular-nums">{{ fila.saldo }}</td>
+              <td>
+                <span
+                  class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-bold whitespace-nowrap before:size-1.5 before:rounded-full before:bg-current"
+                  [class]="fila.estado.clase"
+                >
+                  {{ fila.estado.texto }}
+                </span>
+              </td>
+              <td class="text-right">
+                <div class="inline-flex gap-1">
+                  <button
+                    type="button"
+                    class="btn-icono text-muted-foreground hover:text-foreground border-transparent bg-transparent"
+                    title="Editar"
+                    [attr.aria-label]="'Editar a ' + fila.cliente.nombreCompleto"
+                    (click)="abrirFormulario(fila.cliente)"
+                  >
+                    <app-icono nombre="editar" />
+                  </button>
+                  @if (fila.cliente.activo) {
+                    <button
+                      type="button"
+                      class="btn-icono text-muted-foreground hover:text-destructive hover:bg-destructive-soft border-transparent bg-transparent"
+                      title="Dar de baja"
+                      [attr.aria-label]="'Dar de baja a ' + fila.cliente.nombreCompleto"
+                      (click)="aDarDeBaja.set(fila.cliente)"
+                    >
+                      <app-icono nombre="baja" />
+                    </button>
+                  } @else {
+                    <button
+                      type="button"
+                      class="btn-icono text-muted-foreground hover:text-primary-ink hover:bg-primary-soft border-transparent bg-transparent"
+                      title="Reactivar"
+                      [disabled]="ocupado()"
+                      [attr.aria-label]="'Reactivar a ' + fila.cliente.nombreCompleto"
+                      (click)="reactivar(fila.cliente)"
+                    >
+                      <app-icono nombre="reactivar" />
+                    </button>
+                  }
+                </div>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+    @if (filas().length === 0) {
+      <div class="px-6 py-12 text-center">
+        <p class="text-base font-bold">Sin coincidencias</p>
+        <p class="text-muted-foreground mt-1.5 text-sm">
+          No hay clientes que coincidan con la búsqueda o el filtro.
+        </p>
+      </div>
+    }
+    <div
+      class="text-muted-foreground flex items-center justify-between gap-3 border-t px-4.5 py-3.5 text-[13px]"
+    >
+      <span>Mostrando {{ filas().length }} de {{ total() }} clientes</span>
+      @if (servicio.cargando()) {
+        <span>Actualizando…</span>
+      }
+    </div>
+  </section>
+
+  <!-- Teléfono: tarjetas -->
+  <section class="grid grid-cols-1 gap-3 lg:hidden" aria-label="Lista de clientes">
+    @for (fila of filas(); track fila.cliente.id) {
+      <article class="tarjeta p-4">
+        <div class="flex items-center gap-3">
+          <span
+            class="inline-flex size-9.5 shrink-0 items-center justify-center rounded-full text-[13px] font-extrabold"
+            [class]="fila.avatar"
+          >
+            {{ fila.iniciales }}
+          </span>
+          <div class="min-w-0 flex-1">
+            <div class="truncate text-[15px] font-bold">{{ fila.cliente.nombreCompleto }}</div>
+            <div class="text-muted-foreground mt-0.5 font-mono text-xs">
+              {{ fila.cliente.curp }}
+            </div>
+          </div>
+        </div>
+        <div
+          class="text-muted-foreground mt-3.5 flex flex-wrap items-center gap-x-4 gap-y-2 text-[13px]"
+        >
+          <span
+            class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-bold whitespace-nowrap before:size-1.5 before:rounded-full before:bg-current"
+            [class]="fila.estado.clase"
+          >
+            {{ fila.estado.texto }}
+          </span>
+          <span class="inline-flex items-center gap-1.5">
+            <app-icono nombre="telefono" class="size-4" />
+            {{ fila.cliente.telefono || '—' }}
+          </span>
+          <span class="inline-flex items-center gap-1.5">
+            <app-icono nombre="ubicacion" class="size-4" />
+            {{ fila.cliente.domicilioCiudad || '—' }}
+          </span>
+        </div>
+        @if (fila.prestamos) {
+          <div class="mt-3.5 flex items-center justify-between border-t pt-3">
+            <span class="text-muted-foreground text-[13px]">{{ fila.prestamos }}</span>
+            <span class="text-[15px] font-extrabold tabular-nums">{{ fila.saldo }}</span>
+          </div>
+        }
+        <div class="mt-3 flex gap-2">
+          <button
+            type="button"
+            class="btn-secundario flex-1 px-3 text-[13px]"
+            [attr.aria-label]="'Editar a ' + fila.cliente.nombreCompleto"
+            (click)="abrirFormulario(fila.cliente)"
+          >
+            <app-icono nombre="editar" class="size-4" />
+            Editar
+          </button>
+          @if (fila.cliente.activo) {
+            <button
+              type="button"
+              class="btn-secundario text-destructive hover:bg-destructive-soft flex-1 px-3 text-[13px]"
+              [attr.aria-label]="'Dar de baja a ' + fila.cliente.nombreCompleto"
+              (click)="aDarDeBaja.set(fila.cliente)"
+            >
+              <app-icono nombre="baja" class="size-4" />
+              Dar de baja
+            </button>
+          } @else {
+            <button
+              type="button"
+              class="btn-secundario text-primary-ink hover:bg-primary-soft flex-1 px-3 text-[13px]"
+              [disabled]="ocupado()"
+              [attr.aria-label]="'Reactivar a ' + fila.cliente.nombreCompleto"
+              (click)="reactivar(fila.cliente)"
+            >
+              <app-icono nombre="reactivar" class="size-4" />
+              Reactivar
+            </button>
+          }
+        </div>
+      </article>
+    }
+    @if (filas().length === 0) {
+      <div class="tarjeta px-5 py-8 text-center">
+        <p class="font-bold">Sin coincidencias</p>
+        <p class="text-muted-foreground mt-1.5 text-sm">
+          No hay clientes que coincidan con la búsqueda o el filtro.
+        </p>
+      </div>
+    }
+    <p class="text-muted-foreground mt-1 text-center text-[13px]">
+      Mostrando {{ filas().length }} de {{ total() }} clientes
+    </p>
+  </section>
+}
+
+@if (enFormulario() !== undefined) {
+  <app-cliente-form
+    [cliente]="enFormulario() ?? undefined"
+    [guardando]="ocupado()"
+    [errorServidor]="errorFormulario()"
+    (guardar)="guardar($event)"
+    (cerrar)="cerrarFormulario()"
+  />
+}
+
+@if (aDarDeBaja(); as cliente) {
+  @let bloqueado = (cliente.prestamosActivos ?? 0) > 0;
+  <dialog
+    appDialogoModal
+    role="alertdialog"
+    aria-labelledby="titulo-baja"
+    aria-describedby="texto-baja"
+    class="bg-card text-foreground backdrop:bg-overlay mx-0 mt-auto mb-0 w-full max-w-none rounded-t-3xl border border-b-0 p-0 shadow-2xl sm:m-auto sm:max-w-120 sm:rounded-2xl sm:border-b"
+    (cerrar)="cerrarBaja()"
+  >
+    <div class="flex items-start gap-4 px-6 pt-6 pb-2">
+      <span
+        class="bg-destructive-soft text-destructive inline-flex size-11 shrink-0 items-center justify-center rounded-xl"
+      >
+        <app-icono nombre="baja" />
+      </span>
+      <div>
+        <h2 id="titulo-baja" class="text-[19px] font-extrabold">
+          {{ bloqueado ? 'No se puede dar de baja' : '¿Dar de baja al cliente?' }}
+        </h2>
+        <p id="texto-baja" class="text-muted-foreground mt-1.5 text-sm leading-normal">
+          {{ textoBaja() }}
+        </p>
+      </div>
+    </div>
+    <div class="flex flex-col-reverse gap-3 px-6 pt-4 pb-6 sm:flex-row sm:justify-end">
+      @if (bloqueado) {
+        <button type="button" class="btn-primario" (click)="cerrarBaja()">Entendido</button>
+      } @else {
+        <button type="button" class="btn-secundario" [disabled]="ocupado()" (click)="cerrarBaja()">
+          Cancelar
+        </button>
+        <button
+          type="button"
+          class="btn-peligro"
+          [disabled]="ocupado()"
+          (click)="confirmarBaja(cliente)"
+        >
+          {{ ocupado() ? 'Dando de baja…' : 'Dar de baja' }}
+        </button>
+      }
+    </div>
+  </dialog>
+}

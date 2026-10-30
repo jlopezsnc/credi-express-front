@@ -1,4 +1,4 @@
-import { formatearFecha, formatearMoneda } from '@/core/format';
+import { formatearFecha, formatearMoneda, iniciales, normalizarTexto } from '@/core/format';
 
 describe('formatearMoneda', () => {
   it('usa el formato $12,345.67 MXN', () => {
@@ -18,5 +18,18 @@ describe('formatearFecha', () => {
 
   it('muestra un guion si la fecha es inválida', () => {
     expect(formatearFecha('no-es-fecha')).toBe('—');
+  });
+});
+
+describe('iniciales', () => {
+  it('toma la primera letra de las dos primeras palabras', () => {
+    expect(iniciales('María Fernanda López Ruiz')).toBe('MF');
+    expect(iniciales('  ana  ')).toBe('A');
+  });
+});
+
+describe('normalizarTexto', () => {
+  it('quita acentos y pasa a minúsculas', () => {
+    expect(normalizarTexto('Martínez ÁNGEL')).toBe('martinez angel');
   });
 });

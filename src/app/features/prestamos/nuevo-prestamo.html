@@ -1,0 +1,515 @@
+<header>
+  <p class="text-muted-foreground mb-1.5 text-[13px] font-semibold">
+    Operación /
+    <a routerLink="/prestamos" class="hover:text-foreground underline-offset-2 hover:underline"
+      >Préstamos</a
+    >
+    / Nuevo
+  </p>
+  <h1 class="text-[26px] font-extrabold tracking-tight lg:text-[32px]">Nuevo préstamo</h1>
+  <p class="text-muted-foreground mt-1.5 text-sm">
+    Elige al cliente, define monto, interés y plazo, revisa el calendario y genera el préstamo.
+  </p>
+</header>
+
+<div class="grid grid-cols-1 items-start gap-6 xl:grid-cols-[minmax(0,1fr)_400px]">
+  <form
+    class="tarjeta divide-border divide-y"
+    novalidate
+    aria-label="Datos del préstamo"
+    (submit)="$event.preventDefault()"
+  >
+    <!-- 1. Cliente -->
+    <section class="flex flex-col gap-4 px-4 py-4.5 lg:px-6 lg:py-5.5" aria-labelledby="t-cliente">
+      <div class="flex items-center gap-2.5">
+        <span
+          class="bg-primary-soft text-primary-ink inline-flex size-6.5 shrink-0 items-center justify-center rounded-full text-[13px] font-extrabold"
+          >1</span
+        >
+        <h2 id="t-cliente" class="text-[17px] font-extrabold">Cliente</h2>
+      </div>
+
+      @if (elegido(); as cliente) {
+        <div
+          class="border-primary bg-primary-soft flex items-center gap-3 rounded-xl border px-3.5 py-3"
+        >
+          <span
+            class="inline-flex size-9.5 shrink-0 items-center justify-center rounded-full text-[13px] font-extrabold"
+            [class]="avatarElegido()?.clase"
+          >
+            {{ avatarElegido()?.iniciales }}
+          </span>
+          <div class="min-w-0 flex-1">
+            <div class="truncate text-[15px] font-bold">{{ cliente.nombreCompleto }}</div>
+            <div class="text-muted-foreground mt-0.5 font-mono text-xs">
+              {{ cliente.curp }} · {{ cliente.telefono || 'Sin teléfono' }}
+            </div>
+          </div>
+          <button
+            type="button"
+            class="text-primary-ink hover:text-foreground min-h-9 cursor-pointer px-1 text-[13px] font-bold"
+            (click)="clienteId.set(undefined)"
+          >
+            Cambiar
+          </button>
+        </div>
+      } @else {
+        <div>
+          <label class="mb-1.5 block text-[13px] font-bold" for="f-buscar-cliente"
+            >Buscar cliente</label
+          >
+          <div
+            class="bg-card text-muted-foreground focus-within:border-primary focus-within:ring-primary-soft flex min-h-11 items-center gap-2.5 rounded-lg border px-3.5 focus-within:ring-3"
+            [class.border-destructive]="errorCliente()"
+          >
+            <app-icono nombre="buscar" />
+            <input
+              id="f-buscar-cliente"
+              type="search"
+              autocomplete="off"
+              placeholder="Nombre o CURP"
+              class="text-foreground placeholder:text-muted-foreground w-full min-w-0 bg-transparent text-sm outline-none"
+              aria-describedby="f-cliente-ayuda"
+              [attr.aria-invalid]="errorCliente() || null"
+              [value]="busqueda()"
+              (input)="busqueda.set(texto($event))"
+            />
+          </div>
+          <p
+            id="f-cliente-ayuda"
+            class="mt-1.5 text-xs"
+            [class]="errorCliente() ? 'text-destructive font-semibold' : 'text-muted-foreground'"
+          >
+            {{
+              errorCliente()
+                ? 'Selecciona un cliente.'
+                : 'Solo los clientes activos pueden recibir préstamos.'
+            }}
+          </p>
+
+          @if (clientes.cargando() && clientes.clientes().length === 0) {
+            <p class="text-muted-foreground mx-3 my-2 text-sm" aria-busy="true">
+              Cargando clientes…
+            </p>
+          } @else if (clientes.error() && clientes.clientes().length === 0) {
+            <div
+              role="alert"
+              class="bg-destructive-soft text-destructive mt-2 flex flex-wrap items-center justify-between gap-3 rounded-lg px-4 py-3 text-sm font-semibold"
+            >
+              {{ clientes.error() }}
+              <button type="button" class="btn-secundario min-h-9" (click)="clientes.cargar()">
+                Reintentar
+              </button>
+            </div>
+          } @else {
+            <ul class="mt-2 flex flex-col gap-0.5" aria-label="Clientes encontrados">
+              @for (r of resultados(); track r.cliente.id) {
+                <li>
+                  <button
+                    type="button"
+                    class="hover:bg-accent flex min-h-14 w-full cursor-pointer items-center gap-3 rounded-lg px-3 py-2 text-left disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:bg-transparent"
+                    [disabled]="!r.cliente.activo"
+                    [attr.aria-label]="
+                      r.cliente.activo
+                        ? 'Elegir a ' + r.cliente.nombreCompleto
+                        : r.cliente.nombreCompleto + ', inactivo: no puede recibir préstamos'
+                    "
+                    (click)="elegirCliente(r.cliente)"
+                  >
+                    <span
+                      class="inline-flex size-9.5 shrink-0 items-center justify-center rounded-full text-[13px] font-extrabold"
+                      [class]="r.avatar"
+                    >
+                      {{ r.iniciales }}
+                    </span>
+                    <span class="min-w-0 flex-1">
+                      <span class="block truncate text-sm font-bold">{{
+                        r.cliente.nombreCompleto
+                      }}</span>
+                      <span class="text-muted-foreground mt-0.5 block font-mono text-xs">{{
+                        r.cliente.curp
+                      }}</span>
+                    </span>
+                    @if (!r.cliente.activo) {
+                      <span
+                        class="bg-neutro-soft text-neutro inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-bold whitespace-nowrap before:size-1.5 before:rounded-full before:bg-current"
+                      >
+                        Inactivo
+                      </span>
+                    }
+                  </button>
+                </li>
+              } @empty {
+                <li class="text-muted-foreground mx-3 my-2 text-sm">
+                  No hay clientes que coincidan.
+                </li>
+              }
+            </ul>
+          }
+        </div>
+      }
+    </section>
+
+    <!-- 2. Monto e interés -->
+    <section class="flex flex-col gap-4 px-4 py-4.5 lg:px-6 lg:py-5.5" aria-labelledby="t-monto">
+      <div class="flex items-center gap-2.5">
+        <span
+          class="bg-primary-soft text-primary-ink inline-flex size-6.5 shrink-0 items-center justify-center rounded-full text-[13px] font-extrabold"
+          >2</span
+        >
+        <h2 id="t-monto" class="text-[17px] font-extrabold">Monto e interés</h2>
+      </div>
+      <div class="grid max-w-140 grid-cols-1 gap-4 sm:grid-cols-[minmax(0,1fr)_180px]">
+        <div>
+          <label class="mb-1.5 block text-[13px] font-bold" for="f-monto"
+            >Importe del crédito</label
+          >
+          <div
+            class="bg-card focus-within:border-primary focus-within:ring-primary-soft flex min-h-13 items-center gap-2 rounded-lg border px-3.5 focus-within:ring-3"
+            [class.border-destructive]="errorMonto()"
+          >
+            <span class="text-muted-foreground text-xl font-bold">$</span>
+            <input
+              id="f-monto"
+              type="text"
+              inputmode="decimal"
+              autocomplete="off"
+              placeholder="0.00"
+              class="placeholder:text-muted-foreground w-full min-w-0 bg-transparent text-xl font-bold tabular-nums outline-none placeholder:font-medium"
+              aria-describedby="f-monto-ayuda"
+              [attr.aria-invalid]="!!errorMonto() || null"
+              [value]="monto()"
+              (input)="monto.set(texto($event))"
+            />
+            <span class="text-muted-foreground text-[13px] font-bold">MXN</span>
+          </div>
+          <p
+            id="f-monto-ayuda"
+            class="mt-1.5 text-xs"
+            [class]="errorMonto() ? 'text-destructive font-semibold' : 'text-muted-foreground'"
+          >
+            {{ errorMonto() || ayudaMonto }}
+          </p>
+        </div>
+        <div>
+          <label class="mb-1.5 block text-[13px] font-bold" for="f-tasa">Interés mensual</label>
+          <div
+            class="bg-card focus-within:border-primary focus-within:ring-primary-soft flex min-h-13 items-center gap-2 rounded-lg border px-3.5 focus-within:ring-3"
+            [class.border-destructive]="errorTasa()"
+          >
+            <input
+              id="f-tasa"
+              type="text"
+              inputmode="decimal"
+              autocomplete="off"
+              placeholder="0"
+              class="placeholder:text-muted-foreground w-full min-w-0 bg-transparent text-right text-xl font-bold tabular-nums outline-none"
+              aria-describedby="f-tasa-ayuda"
+              [attr.aria-invalid]="!!errorTasa() || null"
+              [value]="tasa()"
+              (input)="tasa.set(texto($event))"
+            />
+            <span class="text-muted-foreground text-xl font-bold">%</span>
+          </div>
+          <p
+            id="f-tasa-ayuda"
+            class="mt-1.5 text-xs"
+            [class]="errorTasa() ? 'text-destructive font-semibold' : 'text-muted-foreground'"
+          >
+            {{ errorTasa() || 'Se cobra por cada mes del plazo.' }}
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- 3. Plazo -->
+    <section class="flex flex-col gap-4 px-4 py-4.5 lg:px-6 lg:py-5.5" aria-labelledby="t-plazo">
+      <div class="flex items-center gap-2.5">
+        <span
+          class="bg-primary-soft text-primary-ink inline-flex size-6.5 shrink-0 items-center justify-center rounded-full text-[13px] font-extrabold"
+          >3</span
+        >
+        <h2 id="t-plazo" class="text-[17px] font-extrabold">Plazo</h2>
+      </div>
+      <div>
+        <span class="mb-1.5 block text-[13px] font-bold" id="l-periodicidad">Periodicidad</span>
+        <div
+          class="bg-muted grid w-full grid-cols-2 gap-1 rounded-xl border p-1 lg:max-w-120"
+          role="group"
+          aria-labelledby="l-periodicidad"
+        >
+          @for (p of periodicidades; track p.id) {
+            @let activo = p.id === idPeriodicidad();
+            <button
+              type="button"
+              class="min-h-10.5 cursor-pointer rounded-[9px] text-sm font-bold"
+              [class]="
+                activo
+                  ? 'bg-card text-foreground shadow-sm'
+                  : 'text-muted-foreground hover:text-foreground'
+              "
+              [attr.aria-pressed]="activo"
+              (click)="elegirPeriodicidad(p.id)"
+            >
+              {{ p.etiqueta }}
+            </button>
+          }
+        </div>
+      </div>
+      <div>
+        <span class="mb-1.5 block text-[13px] font-bold" id="l-plazos">Número de pagos</span>
+        <div
+          class="grid grid-cols-2 gap-2.5 sm:grid-cols-4 lg:max-w-120"
+          role="group"
+          aria-labelledby="l-plazos"
+        >
+          @for (o of opcionesPlazo(); track o.numero) {
+            @let activo = o.numero === plazos();
+            <button
+              type="button"
+              class="flex min-h-19 cursor-pointer flex-col items-center justify-center gap-0.5 rounded-xl border p-1.5"
+              [class]="
+                activo
+                  ? 'border-primary bg-primary-soft ring-primary ring-1 ring-inset'
+                  : 'bg-card hover:bg-accent'
+              "
+              [attr.aria-pressed]="activo"
+              [attr.aria-label]="o.numero + ' ' + o.unidad + ', ' + o.meses"
+              (click)="plazos.set(o.numero); verTodo.set(false)"
+            >
+              <span class="text-xl leading-tight font-extrabold tabular-nums">{{ o.numero }}</span>
+              <span
+                class="text-xs font-semibold"
+                [class]="activo ? 'text-primary-ink' : 'text-muted-foreground'"
+                >{{ o.unidad }}</span
+              >
+              <span class="text-muted-foreground text-[11px] font-medium">{{ o.meses }}</span>
+            </button>
+          }
+        </div>
+      </div>
+      <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:max-w-120">
+        <div>
+          <label class="mb-1.5 block text-[13px] font-bold" for="f-inicio"
+            >Fecha del primer pago</label
+          >
+          <input
+            id="f-inicio"
+            class="entrada"
+            type="date"
+            aria-describedby="f-inicio-ayuda"
+            [min]="hoy"
+            [attr.aria-invalid]="!!errorFecha() || null"
+            [value]="fechaInicio()"
+            (input)="fechaInicio.set(texto($event))"
+          />
+          <p
+            id="f-inicio-ayuda"
+            class="mt-1.5 text-xs"
+            [class]="errorFecha() ? 'text-destructive font-semibold' : 'text-muted-foreground'"
+          >
+            {{ errorFecha() || 'Los siguientes pagos se calculan a partir de esta fecha.' }}
+          </p>
+        </div>
+        <div>
+          <span class="mb-1.5 block text-[13px] font-bold">Fecha de operación</span>
+          <p class="flex min-h-11 items-center text-sm font-semibold">{{ hoyTexto }}</p>
+        </div>
+      </div>
+    </section>
+  </form>
+
+  <!-- Resumen -->
+  <aside class="xl:sticky xl:top-6" aria-label="Resumen del préstamo">
+    <div class="tarjeta flex flex-col gap-4.5 px-4 py-5 lg:px-6 lg:py-5.5">
+      <div>
+        <p class="text-muted-foreground text-[13px] font-bold">Pago por cuota</p>
+        <p class="mt-1 text-[34px] font-extrabold tracking-tight tabular-nums">
+          {{ resumen().cuota }}
+        </p>
+        <p class="text-muted-foreground mt-0.5 text-sm">{{ resumen().detalle }}</p>
+      </div>
+
+      <dl class="flex flex-col gap-2.5 border-t pt-3.5 text-sm">
+        <div class="flex items-baseline justify-between gap-3">
+          <dt class="text-muted-foreground">Cliente</dt>
+          <dd class="max-w-55 truncate text-right font-bold">
+            {{ elegido()?.nombreCompleto ?? '—' }}
+          </dd>
+        </div>
+        <div class="flex items-baseline justify-between gap-3">
+          <dt class="text-muted-foreground">Monto solicitado</dt>
+          <dd class="text-right font-bold tabular-nums">{{ resumen().monto }}</dd>
+        </div>
+        <div class="flex items-baseline justify-between gap-3">
+          <dt class="text-muted-foreground">Interés mensual</dt>
+          <dd class="text-right font-bold tabular-nums">{{ resumen().tasa }}</dd>
+        </div>
+        <div class="flex items-baseline justify-between gap-3">
+          <dt class="text-muted-foreground">Plazo en meses</dt>
+          <dd class="text-right font-bold tabular-nums">{{ resumen().meses }}</dd>
+        </div>
+        <div class="flex items-baseline justify-between gap-3">
+          <dt class="text-muted-foreground">Interés generado</dt>
+          <dd class="text-right font-bold tabular-nums">{{ resumen().interes }}</dd>
+        </div>
+        <div class="flex items-baseline justify-between gap-3 border-t pt-2.5 text-base">
+          <dt class="font-bold">Total a pagar</dt>
+          <dd class="text-right font-extrabold tabular-nums">{{ resumen().total }}</dd>
+        </div>
+      </dl>
+
+      <p
+        class="bg-primary-soft text-primary-ink flex items-start gap-2.5 rounded-lg px-3 py-2.5 text-[12.5px] leading-normal font-semibold"
+        role="note"
+      >
+        <app-icono nombre="alerta" class="mt-px size-4" />
+        <span>{{ resumen().formula }}</span>
+      </p>
+
+      <div>
+        <div class="mb-1 flex items-center justify-between gap-3">
+          <h2 class="text-[15px] font-extrabold">Calendario de pagos</h2>
+          @if (puedeVerTodo()) {
+            <button
+              type="button"
+              class="text-primary-ink hover:text-foreground min-h-9 cursor-pointer px-1 text-[13px] font-bold"
+              [attr.aria-expanded]="verTodo()"
+              (click)="verTodo.set(!verTodo())"
+            >
+              {{ verTodo() ? 'Ver menos' : 'Ver los ' + filas().length + ' pagos' }}
+            </button>
+          }
+        </div>
+        @if (filas().length > 0) {
+          <table class="w-full border-collapse text-[13px]">
+            <thead>
+              <tr
+                class="text-muted-foreground text-left text-[11px] font-bold tracking-wider uppercase [&>th]:border-b [&>th]:py-2"
+              >
+                <th scope="col">#</th>
+                <th scope="col">Vence</th>
+                <th scope="col" class="text-right">Importe</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (c of calendario(); track c.numero) {
+                <tr class="tabular-nums [&>td]:border-b [&>td]:py-2.25 last:[&>td]:border-b-0">
+                  <td class="text-muted-foreground">{{ c.numero }}</td>
+                  <td>{{ c.fecha }}</td>
+                  <td class="text-right font-bold">{{ c.importe }}</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+          <p class="text-muted-foreground mt-2 text-xs">{{ notaUltimoPago() }}</p>
+        } @else {
+          <p class="text-muted-foreground mt-2 text-sm">
+            Captura un monto y un interés válidos para ver las fechas y los importes.
+          </p>
+        }
+      </div>
+
+      <button
+        type="button"
+        class="btn-primario min-h-13 w-full text-[15px]"
+        (click)="intentarGenerar()"
+      >
+        <app-icono nombre="palomita" />
+        Generar préstamo
+      </button>
+    </div>
+  </aside>
+</div>
+
+@if (confirmando()) {
+  <dialog
+    appDialogoModal
+    aria-labelledby="t-confirmar"
+    class="bg-card text-foreground backdrop:bg-overlay mx-0 mt-auto mb-0 w-full max-w-none rounded-t-3xl border border-b-0 p-0 shadow-2xl sm:m-auto sm:max-w-120 sm:rounded-2xl sm:border-b"
+    (cerrar)="cerrarConfirmacion()"
+  >
+    <div class="px-6 pt-6 pb-2">
+      <h2 id="t-confirmar" class="text-xl font-extrabold">¿Generar préstamo?</h2>
+      <p class="text-muted-foreground mt-1.5 text-sm">
+        Revisa los datos antes de continuar. Se generará el calendario de pagos del cliente.
+      </p>
+    </div>
+    <dl class="flex flex-col gap-2.5 px-6 py-4 text-sm">
+      <div class="flex items-baseline justify-between gap-3">
+        <dt class="text-muted-foreground">Cliente</dt>
+        <dd class="text-right font-bold">{{ elegido()?.nombreCompleto }}</dd>
+      </div>
+      <div class="flex items-baseline justify-between gap-3">
+        <dt class="text-muted-foreground">Monto</dt>
+        <dd class="text-right font-bold tabular-nums">{{ resumen().monto }}</dd>
+      </div>
+      <div class="flex items-baseline justify-between gap-3">
+        <dt class="text-muted-foreground">Interés</dt>
+        <dd class="text-right font-bold tabular-nums">
+          {{ resumen().tasa }} × {{ resumen().meses }}
+        </dd>
+      </div>
+      <div class="flex items-baseline justify-between gap-3">
+        <dt class="text-muted-foreground">Pagos</dt>
+        <dd class="text-right font-bold tabular-nums">{{ resumen().detalleCorto }}</dd>
+      </div>
+      <div class="flex items-baseline justify-between gap-3">
+        <dt class="text-muted-foreground">Primer pago</dt>
+        <dd class="text-right font-bold">{{ primerPago() }}</dd>
+      </div>
+      <div class="flex items-baseline justify-between gap-3 border-t pt-2.5 text-base">
+        <dt class="font-bold">Total a pagar</dt>
+        <dd class="text-right font-extrabold tabular-nums">{{ resumen().total }}</dd>
+      </div>
+    </dl>
+    @if (errorApi()) {
+      <p
+        role="alert"
+        class="bg-destructive-soft text-destructive mx-6 mb-2 rounded-lg px-3.5 py-2.5 text-sm font-semibold"
+      >
+        {{ errorApi() }}
+      </p>
+    }
+    <div class="flex flex-col-reverse gap-3 border-t px-6 pt-4 pb-6 sm:flex-row sm:justify-end">
+      <button
+        type="button"
+        class="btn-secundario"
+        [disabled]="enviando()"
+        (click)="cerrarConfirmacion()"
+      >
+        Cancelar
+      </button>
+      <button type="button" class="btn-primario" [disabled]="enviando()" (click)="generar()">
+        {{ enviando() ? 'Generando…' : 'Generar préstamo' }}
+      </button>
+    </div>
+  </dialog>
+}
+
+@if (resultado(); as r) {
+  <dialog
+    appDialogoModal
+    aria-labelledby="t-generado"
+    class="bg-card text-foreground backdrop:bg-overlay mx-0 mt-auto mb-0 w-full max-w-none rounded-t-3xl border border-b-0 p-0 text-center shadow-2xl sm:m-auto sm:max-w-120 sm:rounded-2xl sm:border-b"
+    (cerrar)="cerrarResultado()"
+  >
+    <div class="flex flex-col items-center gap-3 px-6 pt-7 pb-2">
+      <span
+        class="bg-ok-soft text-ok inline-flex size-12 items-center justify-center rounded-[14px]"
+      >
+        <app-icono nombre="palomita" class="size-6.5" />
+      </span>
+      <h2 id="t-generado" class="text-xl font-extrabold">{{ r.mensaje }}</h2>
+      <p class="text-muted-foreground text-sm leading-normal">
+        Se generaron {{ r.plazosGenerados }} plazos de pago para {{ r.cliente }}.
+      </p>
+    </div>
+    <div class="flex flex-col-reverse gap-3 px-6 pt-4 pb-6 sm:flex-row sm:justify-center">
+      <a routerLink="/prestamos" class="btn-secundario">Ver préstamos</a>
+      <button type="button" class="btn-primario" (click)="nuevoPrestamo()">
+        Registrar otro préstamo
+      </button>
+    </div>
+  </dialog>
+}

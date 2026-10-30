@@ -28,3 +28,14 @@ export function formatearFecha(fechaIso: string): string {
   if (Number.isNaN(fecha.getTime())) return '—';
   return formatoFecha.format(fecha);
 }
+
+/** Iniciales para avatares: "María Fernanda López" → "MF". */
+export function iniciales(nombre: string): string {
+  const [primera = '', segunda = ''] = nombre.trim().split(/\s+/);
+  return (primera.charAt(0) + segunda.charAt(0)).toUpperCase();
+}
+
+/** Para buscar sin importar acentos ni mayúsculas: "Martínez" → "martinez". */
+export function normalizarTexto(texto: string): string {
+  return texto.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+}

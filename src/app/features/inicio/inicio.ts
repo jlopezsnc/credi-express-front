@@ -1,33 +1,32 @@
 import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
-import { Router } from '@angular/router';
+import { RouterLink } from '@angular/router';
 import { AuthService } from '@/core/auth/auth.service';
 
 /** Marcador temporal: aquí irá el dashboard (docs §4.2). */
 @Component({
   selector: 'app-inicio',
+  imports: [RouterLink],
   changeDetection: ChangeDetectionStrategy.OnPush,
+  host: { class: 'flex flex-col gap-6' },
   template: `
-    <main class="mx-auto max-w-3xl p-6">
-      <div class="flex items-center justify-between gap-4">
-        <h1 class="text-2xl font-semibold">Credi Express</h1>
-        <button
-          type="button"
-          (click)="cerrarSesion()"
-          class="border-input hover:bg-muted rounded-md border px-4 py-2 text-sm font-medium"
-        >
-          Cerrar sesión
-        </button>
-      </div>
-      <p class="text-muted-foreground mt-2">Sesión iniciada como {{ auth.usuario()?.email }}</p>
-    </main>
+    <header>
+      <p class="text-muted-foreground mb-1.5 text-[13px] font-semibold">Operación / Inicio</p>
+      <h1 class="text-[26px] font-extrabold tracking-tight lg:text-[32px]">Inicio</h1>
+      <p class="text-muted-foreground mt-1.5 text-sm">
+        Sesión iniciada como {{ auth.usuario()?.email }}
+      </p>
+    </header>
+    <div class="tarjeta px-6 py-12 text-center">
+      <p class="text-base font-bold">Aquí irá el resumen del día</p>
+      <p class="text-muted-foreground mt-1.5 text-sm">
+        Mientras tanto, puedes revisar el
+        <a routerLink="/clientes" class="text-primary-ink font-semibold underline"
+          >catálogo de clientes</a
+        >.
+      </p>
+    </div>
   `,
 })
 export class Inicio {
   protected readonly auth = inject(AuthService);
-  private readonly router = inject(Router);
-
-  protected async cerrarSesion(): Promise<void> {
-    await this.auth.cerrarSesion();
-    await this.router.navigateByUrl('/login', { replaceUrl: true });
-  }
 }

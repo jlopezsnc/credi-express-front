@@ -1,56 +1,102 @@
 @import 'tailwindcss';
+/* Fuentes empaquetadas con la app: la CSP (`font-src 'self'`) no permite Google Fonts. */
+@import '@fontsource-variable/manrope';
+@import '@fontsource-variable/jetbrains-mono';
 
 @custom-variant dark (&:is(.dark *));
 
 /*
  * Todos los estilos viven aquí (Tailwind). Los componentes NO usan `styles` ni `styleUrl`:
  * Angular los inyecta como <style> en línea y la CSP (`style-src 'self'`) los bloquearía.
+ *
+ * Paleta aprobada en el prototipo de Clientes. La clase `.dark` en <html> la pone TemaService.
  */
 :root {
+  color-scheme: light;
   --radius: 0.625rem;
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.511 0.096 186.391);
-  --primary-foreground: oklch(0.984 0.014 180.72);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --success: oklch(0.627 0.17 149.214);
-  --warning: oklch(0.769 0.165 70.08);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.511 0.096 186.391);
+  --background: #f4f6f6;
+  --foreground: #11201f;
+  --card: #ffffff;
+  --card-foreground: #11201f;
+  --muted: #f3f6f6;
+  --muted-foreground: #566866;
+  --accent: #eef3f2;
+  --accent-foreground: #11201f;
+  --primary: #0f766e;
+  --primary-foreground: #ffffff;
+  --primary-soft: #ddf1ee;
+  --primary-ink: #0b5e57;
+  --destructive: #b42318;
+  --destructive-foreground: #ffffff;
+  --destructive-soft: #fde8e6;
+  --border: #e1e7e6;
+  --input: #e1e7e6;
+  --ring: #0f766e;
+  --overlay: rgb(8 18 18 / 45%);
+  --sombra: 0 1px 2px rgb(16 32 31 / 5%), 0 10px 30px rgb(16 32 31 / 6%);
+  /* Estados del cliente */
+  --ok: #14632f;
+  --ok-soft: #dcf2e5;
+  --atraso: #8f340e;
+  --atraso-soft: #fce6d6;
+  --neutro: #485756;
+  --neutro-soft: #ebefef;
+  /* Avatares */
+  --av0: #ddf1ee;
+  --av0-ink: #0b5e57;
+  --av1: #e3e9fb;
+  --av1-ink: #2b3f8f;
+  --av2: #fbe9dd;
+  --av2-ink: #8a3a12;
+  --av3: #efe4f7;
+  --av3-ink: #62307e;
+  --av4: #e6efda;
+  --av4-ink: #3c5a1b;
 }
 
 .dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.704 0.14 182.503);
-  --primary-foreground: oklch(0.277 0.046 192.524);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --success: oklch(0.723 0.192 149.579);
-  --warning: oklch(0.828 0.189 84.429);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.704 0.14 182.503);
+  color-scheme: dark;
+  --background: #0b1213;
+  --foreground: #e5eeed;
+  --card: #111a1b;
+  --card-foreground: #e5eeed;
+  --muted: #152022;
+  --muted-foreground: #97a8a6;
+  --accent: #182526;
+  --accent-foreground: #e5eeed;
+  --primary: #2cc3b0;
+  --primary-foreground: #03211e;
+  --primary-soft: #123532;
+  --primary-ink: #7de3d5;
+  --destructive: #f97066;
+  --destructive-foreground: #2a0a06;
+  --destructive-soft: #3a1512;
+  --border: #223130;
+  --input: #223130;
+  --ring: #2cc3b0;
+  --overlay: rgb(0 0 0 / 60%);
+  --sombra: 0 1px 2px rgb(0 0 0 / 40%), 0 10px 30px rgb(0 0 0 / 35%);
+  --ok: #8be3a8;
+  --ok-soft: #123222;
+  --atraso: #fdba74;
+  --atraso-soft: #3a2010;
+  --neutro: #a9b8b6;
+  --neutro-soft: #1b2828;
+  --av0: #123532;
+  --av0-ink: #7de3d5;
+  --av1: #1c2647;
+  --av1-ink: #a9bcfa;
+  --av2: #3a2414;
+  --av2-ink: #f7b98c;
+  --av3: #2e1e3b;
+  --av3-ink: #d6b4f0;
+  --av4: #1f2e14;
+  --av4-ink: #b6db8c;
+}
+
+@theme {
+  --font-sans: 'Manrope Variable', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono Variable', ui-monospace, monospace;
 }
 
 @theme inline {
@@ -58,26 +104,42 @@
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
+  --shadow-tarjeta: var(--sombra);
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
   --color-card-foreground: var(--card-foreground);
-  --color-popover: var(--popover);
-  --color-popover-foreground: var(--popover-foreground);
-  --color-primary: var(--primary);
-  --color-primary-foreground: var(--primary-foreground);
-  --color-secondary: var(--secondary);
-  --color-secondary-foreground: var(--secondary-foreground);
   --color-muted: var(--muted);
   --color-muted-foreground: var(--muted-foreground);
   --color-accent: var(--accent);
   --color-accent-foreground: var(--accent-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary-soft: var(--primary-soft);
+  --color-primary-ink: var(--primary-ink);
   --color-destructive: var(--destructive);
-  --color-success: var(--success);
-  --color-warning: var(--warning);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-destructive-soft: var(--destructive-soft);
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
+  --color-overlay: var(--overlay);
+  --color-ok: var(--ok);
+  --color-ok-soft: var(--ok-soft);
+  --color-atraso: var(--atraso);
+  --color-atraso-soft: var(--atraso-soft);
+  --color-neutro: var(--neutro);
+  --color-neutro-soft: var(--neutro-soft);
+  --color-av0: var(--av0);
+  --color-av0-ink: var(--av0-ink);
+  --color-av1: var(--av1);
+  --color-av1-ink: var(--av1-ink);
+  --color-av2: var(--av2);
+  --color-av2-ink: var(--av2-ink);
+  --color-av3: var(--av3);
+  --color-av3-ink: var(--av3-ink);
+  --color-av4: var(--av4);
+  --color-av4-ink: var(--av4-ink);
 }
 
 @layer base {
@@ -87,4 +149,30 @@
   body {
     @apply bg-background text-foreground antialiased;
   }
+  :focus-visible {
+    @apply outline-primary outline-2 outline-offset-2;
+  }
+}
+
+/* Piezas que se repiten en todas las pantallas. */
+@utility btn {
+  @apply inline-flex min-h-11 cursor-pointer items-center justify-center gap-2 rounded-lg px-4.5 text-sm font-bold whitespace-nowrap disabled:cursor-not-allowed disabled:opacity-60;
+}
+@utility btn-primario {
+  @apply btn bg-primary text-primary-foreground hover:brightness-110;
+}
+@utility btn-secundario {
+  @apply btn border-border bg-card text-foreground hover:bg-accent border;
+}
+@utility btn-peligro {
+  @apply btn bg-destructive text-destructive-foreground focus-visible:outline-destructive hover:brightness-110;
+}
+@utility btn-icono {
+  @apply border-border bg-card text-foreground hover:bg-accent inline-flex size-11 shrink-0 cursor-pointer items-center justify-center rounded-lg border;
+}
+@utility entrada {
+  @apply border-input bg-card text-foreground placeholder:text-muted-foreground focus:border-primary focus:ring-primary-soft aria-invalid:border-destructive min-h-11 w-full rounded-lg border px-3 text-sm focus:ring-3 focus:outline-none;
+}
+@utility tarjeta {
+  @apply border-border bg-card shadow-tarjeta rounded-2xl border;
 }

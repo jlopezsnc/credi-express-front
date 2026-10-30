@@ -14,3 +14,13 @@ export function apiUrl(ruta: string): string {
 export function esUrlDeApi(url: string): boolean {
   return url === env.apiBaseUrl || url.startsWith(`${env.apiBaseUrl}/`);
 }
+
+/**
+ * Sobre con el que el back envuelve sus respuestas:
+ * `{ "objetoResponse": …, "httpStatus": "OK", "mensaje": "3 registros encontrados." }`.
+ */
+export interface RespuestaApi<T> {
+  objetoResponse: T;
+  httpStatus: string;
+  mensaje: string;
+}

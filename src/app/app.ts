@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, inject, isDevMode } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
 import { ErrorGlobal } from '@/core/error-global';
+import { TemaService } from '@/core/ui/tema.service';
 
 /** Raíz: muestra las rutas o, ante un error no controlado, una pantalla en lugar de quedar en blanco. */
 @Component({
@@ -26,6 +27,11 @@ import { ErrorGlobal } from '@/core/error-global';
   `,
 })
 export class App {
+  constructor() {
+    // Se crea aquí para que el tema aplique en todas las pantallas, también en el login.
+    inject(TemaService);
+  }
+
   private readonly errorGlobal = inject(ErrorGlobal);
 
   /** El detalle del error solo se muestra en desarrollo. */
