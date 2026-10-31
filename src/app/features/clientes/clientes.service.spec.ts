@@ -53,6 +53,11 @@ describe('aCliente', () => {
     expect(cliente.prestamosActivos).toBeUndefined();
   });
 
+  it('un cliente migrado sin CURP queda con CURP vacía', () => {
+    const base = RESPUESTA[0] as ClienteRespuesta;
+    expect(aCliente({ ...base, curp: null }).curp).toBe('');
+  });
+
   it('lee estatusCliente cuando el back lo envía', () => {
     const base = RESPUESTA[0] as ClienteRespuesta;
     expect(aCliente({ ...base, estatusCliente: 'INACTIVO' }).activo).toBe(false);

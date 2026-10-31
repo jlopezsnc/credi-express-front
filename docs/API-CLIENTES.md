@@ -3,13 +3,13 @@
 Base: `http://localhost:8080/api/operaciones-cliente` (en el front: `apiUrl('/operaciones-cliente/...')`).
 Todas las rutas exigen `Authorization: Bearer <idToken de Firebase>`.
 
-Estado al 2026-10-29:
+Estado al 2026-10-30:
 
 | Endpoint                          | Estado en el back | Lo usa el front            |
 | --------------------------------- | ----------------- | -------------------------- |
 | `GET cliente-lst`                 | ✅ Existe         | Lista de clientes          |
 | `POST cliente-agregar`            | ✅ Existe         | Alta                       |
-| `PUT cliente-actualizar/{id}`     | ⏳ Pendiente      | Editar                     |
+| `PUT cliente-actualizar/{id}`     | ✅ Hecho (sin MySQL) | Editar                  |
 | `PUT cliente-baja/{id}`           | ⏳ Pendiente      | Dar de baja                |
 | `PUT cliente-reactivar/{id}`      | ⏳ Pendiente      | Reactivar                  |
 | Campo `estatusCliente`            | ⏳ Pendiente      | Filtros Activos/Inactivos  |
@@ -142,10 +142,19 @@ No se envían `idCliente` ni `estatusCliente`: los asigna el back (`estatusClien
 
 ---
 
-## `PUT /cliente-actualizar/{idCliente}` ⏳
+## `PUT /cliente-actualizar/{idCliente}` ✅
 
 Reemplaza los datos capturables del cliente. **No** cambia `estatusCliente` (para eso están
 baja y reactivar).
+
+Implementado el 2026-10-30 con Bean Validation (`ActualizarClienteRequest`, `@CurpValida`). Los
+límites son los de las columnas de `cliente` (no se cambió la tabla): nombre 100, calle 45,
+colonia 30, ciudad 45, correo 40, teléfono 10 dígitos. Nombre y opcionales se guardan sin espacios
+al inicio o al final, los opcionales vacíos como `null` y la CURP en mayúsculas.
+
+**CURP obligatoria al editar.** Un cliente migrado del Excel sin CURP (`curp: null` en
+`cliente-lst`) se puede seguir consultando y prestándole, pero para editarlo hay que capturarle
+la CURP: así se completa su expediente la próxima vez que venga.
 
 **Request** — mismo cuerpo que el alta (los 7 campos, todos presentes):
 
@@ -163,7 +172,8 @@ baja y reactivar).
 
 **Respuesta 200** — `objetoResponse`: el cliente actualizado.
 
-**Errores**: 400 validación · 404 no existe · 409 la CURP pertenece a **otro** cliente.
+**Errores**: 400 validación (`mensaje: "Revisa los datos del cliente."` y `campos`) · 404
+`"No existe el cliente."` · 409 `"Ya existe otro cliente registrado con esta CURP."`
 
 ---
 

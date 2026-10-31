@@ -24,6 +24,7 @@ export type NombreIcono =
   | 'reactivar'
   | 'descargar'
   | 'imprimir'
+  | 'convenio'
   | 'info'
   | 'listo'
   | 'ordenar'
@@ -144,6 +145,11 @@ export type NombreIcono =
           <path d="M7 8.5V3.5h10v5" />
           <rect x="3.5" y="8.5" width="17" height="8" rx="2" />
           <path d="M7 14h10v6.5H7z" />
+        }
+        @case ('convenio') {
+          <path d="M7 3.5h7l4 4v13H7z" />
+          <path d="M14 3.5v4h4" />
+          <path d="m9.5 14 2 2 3.5-3.5" />
         }
         @case ('info') {
           <circle cx="12" cy="12" r="9" />

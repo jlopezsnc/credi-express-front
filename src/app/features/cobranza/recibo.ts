@@ -9,6 +9,7 @@ import {
   type Liquidacion,
   type MetodoPago,
   type Pago,
+  type ReciboOperacion,
   type SaldoPrestamo,
 } from '@/features/cobranza/cobranza-api';
 
@@ -140,8 +141,11 @@ export function reciboDePago(p: Pago): Recibo {
   };
 }
 
-/** `saldo` es lo que se consultó antes de liquidar: de ahí salen la modalidad y el total de cuotas. */
-export function reciboDeLiquidacion(l: Liquidacion, saldo: SaldoPrestamo): Recibo {
+/** Al cobrar, `saldo` es lo que se consultó antes de liquidar: de ahí salen la modalidad y el total de cuotas. */
+export function reciboDeLiquidacion(
+  l: Liquidacion,
+  saldo: Pick<SaldoPrestamo, 'modalidad' | 'totalCuotas'>,
+): Recibo {
   const numeros = l.pagos.map((p) => p.numeroCuota).sort((a, b) => a - b);
   return {
     titulo: 'Préstamo liquidado',
@@ -161,9 +165,22 @@ export function reciboDeLiquidacion(l: Liquidacion, saldo: SaldoPrestamo): Recib
     saldoEtiqueta: 'Saldo del préstamo',
     saldo: 'Préstamo liquidado',
     liquidada: true,
-    nota: l.clienteSinAdeudos
-      ? 'El cliente ya no tiene adeudos.'
-      : 'El cliente todavía tiene otro préstamo con saldo.',
+    nota: notaLiquidacion(l.clienteSinAdeudos),
     archivo: nombreArchivo(l.cliente.nombreCompleto, numeros, saldo.totalCuotas),
   };
+}
+
+function notaLiquidacion(clienteSinAdeudos: boolean | null): string {
+  if (clienteSinAdeudos === null) return '';
+  return clienteSinAdeudos
+    ? 'El cliente ya no tiene adeudos.'
+    : 'El cliente todavía tiene otro préstamo con saldo.';
+}
+
+/** Reimpresión: el mismo recibo que se entregó al cobrar. */
+export function reciboDeOperacion(r: ReciboOperacion): Recibo {
+  if (r.tipo === 'LIQUIDACION') {
+    return reciboDeLiquidacion(r.liquidacion, r);
+  }
+  return reciboDePago(r.pago);
 }

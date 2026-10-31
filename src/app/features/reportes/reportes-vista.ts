@@ -133,6 +133,20 @@ export function csvCartera(r: ReporteCartera): string {
   );
 }
 
+/**
+ * Trazo SVG de una columna con la base recta en `base` y la punta redondeada (radio 4, sin pasar
+ * de la mitad del grueso ni del alto). Vacío si no tiene alto.
+ */
+export function trazoColumna(x: number, base: number, grueso: number, alto: number): string {
+  if (alto <= 0) return '';
+  const y = base - alto;
+  const r = Math.min(RADIO, grueso / 2, alto);
+  return (
+    `M${n(x)},${n(base)}V${n(y + r)}Q${n(x)},${n(y)} ${n(x + r)},${n(y)}` +
+    `H${n(x + grueso - r)}Q${n(x + grueso)},${n(y)} ${n(x + grueso)},${n(y + r)}V${n(base)}Z`
+  );
+}
+
 /** Tamaño del lienzo de la gráfica de columnas (unidades del `viewBox`; escala con el ancho). */
 export const LIENZO = { ancho: 640, alto: 160 } as const;
 /** Barras horizontales: el largo máximo y el grueso (unidades del `viewBox`). */
@@ -157,12 +171,7 @@ export function columnas(porcentajes: readonly number[]): { d: string; x: number
     const x = i * slot + (slot - grueso) / 2;
     const alto = porcentaje > 0 ? Math.max(1, (porcentaje / 100) * LIENZO.alto) : 0;
     if (alto === 0) return { d: '', x: i * slot, slot };
-    const y = LIENZO.alto - alto;
-    const r = Math.min(RADIO, grueso / 2, alto);
-    const d =
-      `M${n(x)},${n(LIENZO.alto)}V${n(y + r)}Q${n(x)},${n(y)} ${n(x + r)},${n(y)}` +
-      `H${n(x + grueso - r)}Q${n(x + grueso)},${n(y)} ${n(x + grueso)},${n(y + r)}V${n(LIENZO.alto)}Z`;
-    return { d, x: i * slot, slot };
+    return { d: trazoColumna(x, LIENZO.alto, grueso, alto), x: i * slot, slot };
   });
 }
 

@@ -12,6 +12,7 @@ import type {
   PaginaConTotal,
   PeticionLiquidacion,
   PeticionPago,
+  ReciboOperacion,
   ResumenCobranza,
   SaldoPrestamo,
   SituacionCuota,
@@ -99,6 +100,16 @@ export class CobranzaService {
     const respuesta = await firstValueFrom(
       this.http.get<RespuestaApi<SaldoPrestamo>>(
         apiUrl(`${BASE}/prestamo-saldo/${String(idPrestamo)}`),
+      ),
+    );
+    return respuesta.objetoResponse;
+  }
+
+  /** Datos de una operación ya cobrada, para reimprimir su recibo. */
+  async recibo(folio: string): Promise<ReciboOperacion> {
+    const respuesta = await firstValueFrom(
+      this.http.get<RespuestaApi<ReciboOperacion>>(
+        apiUrl(`${BASE}/recibo/${encodeURIComponent(folio)}`),
       ),
     );
     return respuesta.objetoResponse;

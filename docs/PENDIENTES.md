@@ -26,16 +26,21 @@ Actualizado: 2026-10-30.
 - [ ] Clientes: `cliente-lst` responde 404 sin cuerpo cuando no hay clientes; debe ser 200 con `[]`.
 - [ ] Clientes: `cliente-agregar` exige calle, colonia y ciudad (en el front son opcionales) y
       truena si un campo llega `null`. Pasar a Bean Validation.
-- [ ] Clientes: `PUT cliente-actualizar/{id}`, `PUT cliente-baja/{id}`, `PUT cliente-reactivar/{id}`
+- [x] Clientes: `PUT cliente-actualizar/{id}` (2026-10-30, sin probar en MySQL; CURP obligatoria al editar).
+- [ ] Clientes: `PUT cliente-baja/{id}`, `PUT cliente-reactivar/{id}`
       y el campo `estatusCliente` (requiere una columna nueva en `cliente`). Detalle: [API-CLIENTES.md](API-CLIENTES.md).
 - [ ] Clientes: validar la CURP (formato, dígito verificador y que no se repita) y corregir las
       dos CURP inválidas que ya están en la base.
 - [ ] Clientes: confirmar que la baja se rechaza (409) si el cliente tiene préstamos activos.
 - [ ] Clientes (a futuro): resumen de préstamos en `cliente-lst` (`prestamosActivos`,
       `saldoPendiente`, `conAtraso`).
-- [ ] Base: el dinero está en columnas `FLOAT` (`importe_cuota`, `total_pagar`, …) y `numero_cuota`
-      también es `FLOAT`. Mientras no se migren a `DECIMAL(12,2)`/`INT`, redondear a 2 decimales al
-      leer (`BigDecimal.valueOf(x).setScale(2, HALF_UP)`).
+- [x] Base: dinero en `DECIMAL(12,2)` y `numero_cuota` en `INT` (`V6__dinero_decimal.sql`, autorizado el
+      2026-10-30; se aplica al arrancar el back).
+- [ ] Base: limpiar los datos de prueba con `scripts/db/limpiar-datos-prueba.sql` del back (manual, con
+      respaldo antes; deja el catálogo de modalidades) antes de cargar el Excel.
+- [ ] **Migración del Excel**: archivo analizado el 2026-10-30 (45 clientes, 55 préstamos, 650
+      cuotas, datos consistentes). Faltan las decisiones del usuario (teléfono/INE, fecha de los pagos
+      históricos) para escribir la carga repetible con ensayo y conciliación.
 - [x] Base: versionar el esquema con Flyway (línea base = `mysqldump --no-data` del 2026-10-30).
 - [x] Manejador global de errores con el sobre común y `spring-boot-starter-validation`.
 - [x] Seguridad sin roles: código de roles limpio y `SeguridadEndpointsTest` reescrito (commit `829c540`).
@@ -48,7 +53,7 @@ Actualizado: 2026-10-30.
 
 ## Negocio
 
-- [ ] Límites del monto (hoy $1,000 a $50,000) y del interés mensual (hoy 12% por defecto, máximo 100%).
+- [x] Límites del monto (hoy $1,000 a $50,000) y del interés mensual (hoy 12% por defecto, máximo 100%).
 - [ ] ¿Quién puede cambiar el interés mensual? (sin roles: cualquier usuario del negocio).
 - [ ] ¿Un cliente puede tener más de un préstamo activo a la vez?
 - [x] Cobranza: **se aceptan abonos parciales** (2026-10-30); la diferencia queda en la misma cuota.
@@ -75,7 +80,9 @@ Actualizado: 2026-10-30.
       detalle por folio) y cartera (vencido, por vencer, antigüedad y clientes con atraso), con
       exportación a CSV.
 - [ ] Reportes: exportar a PDF o `.xlsx` si hace falta (requiere una librería; decidir cuál).
-- [ ] Reportes: cobranza esperada contra cobrada por semana (propuesta del dashboard, §4.2).
+- [x] Reportes: cobranza esperada contra cobrada por semana: quedó en Inicio (2026-10-30).
+- [x] **Inicio** (2026-10-30): resumen del mes contra el anterior y cartera al día de hoy, sin tablas
+      nuevas. `GET /operaciones-inicio/resumen`. Detalle: [API-INICIO.md](API-INICIO.md).
 
 - [x] Clientes y Préstamos: orden por cualquier columna (clic en el encabezado; en el celular,
       "Ordenar por") y páginas de 10 (2026-10-30). Pieza reutilizable en `src/app/core/tabla/`.
@@ -92,6 +99,16 @@ Actualizado: 2026-10-30.
       con el resumen y el calendario completo, sin la fórmula del interés y sin exigir cliente; sale
       en colores claros (`.papel`) y el menú del shell no se imprime (`print:hidden`).
 - [ ] Nuevo préstamo: probar la impresión en el navegador real (y "Guardar como PDF").
+
+- [x] **Convenios** (2026-10-30): back (`V4__convenio.sql` con bitácora, `estado_pago = 4`,
+      `/operaciones-convenios/simular` y `convenio-generar` con `Idempotency-Key`; la lista reutiliza
+      `/prestamos` con filtros `AL_CORRIENTE`/`EN_CONVENIO`, orden `PRESTAMO`/`VENCIDAS` e
+      `idCliente`) y pantalla `/convenios` con "Imprimir convenio". Detalle: [API-CONVENIOS.md](API-CONVENIOS.md).
+- [ ] Convenios: probar contra MySQL real (al arrancar, Flyway aplica V4 y V5: crea `convenio` y
+      `convenio_prestamo`; no toca datos).
+- [x] Convenios: lista, detalle con bitácora y cancelación (2026-10-30). Solo se cancela vigente y
+      sin pagos; el préstamo del convenio queda con `estado_pago = 5`; `V5__convenio_cancelacion.sql`
+      (índices). Pantalla `/convenios`; "Nuevo convenio" en `/convenios/nuevo`.
 - [ ] Lista de préstamos: mostrar monto prestado y tasa cuando el back los envíe.
 - [ ] Clientes: llenar "Préstamos" y "Saldo pendiente" con los préstamos de cada cliente.
 - [ ] Cuando el back recalcule: enviar solo los datos capturados y quitar los campos fijos.

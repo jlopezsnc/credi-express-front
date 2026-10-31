@@ -32,6 +32,11 @@ import { type PeticionPrestamo, PrestamosService } from '@/features/prestamos/pr
 const MAX_RESULTADOS = 5;
 const FILAS_VISIBLES = 5;
 
+const NOTA_SIMULACION =
+  'Esta simulación es informativa y no es un contrato ni una aprobación del crédito. Si estás de ' +
+  'acuerdo con las condiciones, comunícate con nosotros para proceder con la solicitud. Los importes ' +
+  'y las fechas se confirman al generar el préstamo.';
+
 const formatoFechaLarga = new Intl.DateTimeFormat('es-MX', {
   day: 'numeric',
   month: 'long',
@@ -255,18 +260,24 @@ export class NuevoPrestamo {
   protected readonly simulacion = computed<Simulacion>(() => {
     const { cuota, detalle, monto, tasa, meses, interes, total } = this.resumen();
     return {
+      titulo: 'Simulación de préstamo',
       cliente: this.elegido()?.nombreCompleto,
       emision: this.hoyTexto,
       cuota,
       detalle,
-      monto,
-      tasa,
-      meses,
-      interes,
+      datos: [
+        { etiqueta: 'Monto solicitado', valor: monto },
+        { etiqueta: 'Interés mensual', valor: tasa },
+        { etiqueta: 'Plazo', valor: meses },
+        { etiqueta: 'Interés generado', valor: interes },
+        { etiqueta: 'Primer pago', valor: this.primerPago() },
+      ],
+      etiquetaTotal: 'Total a pagar',
       total,
-      primerPago: this.primerPago(),
+      prestamos: [],
       filas: this.filas(),
       notaUltimoPago: this.notaUltimoPago(),
+      nota: NOTA_SIMULACION,
     };
   });
 

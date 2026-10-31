@@ -1,0 +1,445 @@
+<header class="flex flex-wrap items-end justify-between gap-4 print:hidden">
+  <div>
+    <p class="text-muted-foreground mb-1.5 text-[13px] font-semibold">Operación / Convenios</p>
+    <h1 class="text-[26px] font-extrabold tracking-tight lg:text-[32px]">Convenios</h1>
+    <p class="text-muted-foreground mt-1.5 text-sm">
+      Convenios generados: cómo va el pago de cada uno, qué préstamos juntó y su bitácora.
+    </p>
+  </div>
+  <a routerLink="/convenios/nuevo" class="btn-primario w-full lg:w-auto">
+    <app-icono nombre="mas" />
+    Nuevo convenio
+  </a>
+</header>
+
+<div class="flex flex-col gap-6 print:hidden">
+  <label
+    class="border-border bg-card text-muted-foreground focus-within:border-primary focus-within:ring-primary-soft flex min-h-11 items-center gap-2.5 rounded-lg border px-3.5 focus-within:ring-3 lg:max-w-115"
+  >
+    <app-icono nombre="buscar" />
+    <input
+      type="search"
+      placeholder="Buscar por titular, folio o préstamo"
+      aria-label="Buscar convenios por titular, folio o número de préstamo"
+      class="text-foreground placeholder:text-muted-foreground w-full min-w-0 bg-transparent text-sm outline-none"
+      [value]="busqueda()"
+      (input)="busqueda.set(texto($event))"
+    />
+  </label>
+
+  <div
+    role="group"
+    aria-label="Filtrar convenios"
+    class="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 lg:mx-0 lg:flex-wrap lg:overflow-visible lg:px-0 lg:pb-0"
+  >
+    @for (f of filtros(); track f.id) {
+      @let activo = filtro() === f.id;
+      <button
+        type="button"
+        [attr.aria-pressed]="activo"
+        class="inline-flex min-h-9 shrink-0 cursor-pointer items-center gap-2 rounded-full border px-3.5 text-[13px] font-semibold whitespace-nowrap"
+        [class]="
+          activo
+            ? 'bg-foreground text-card border-foreground'
+            : 'bg-card text-muted-foreground hover:text-foreground'
+        "
+        (click)="filtro.set(f.id)"
+      >
+        {{ f.etiqueta }}
+        <span
+          class="rounded-full px-1.75 py-px text-xs tabular-nums"
+          [class]="activo ? 'bg-neutral-500/30' : 'bg-accent text-foreground'"
+        >
+          {{ f.cantidad }}
+        </span>
+      </button>
+    }
+  </div>
+
+  <app-orden-movil
+    class="lg:hidden"
+    campo="orden-convenios"
+    [columnas]="columnas"
+    [orden]="tabla.orden()"
+    (cambiar)="ordenarMovil($event)"
+  />
+
+  @if (cargandoInicial()) {
+    <div class="tarjeta text-muted-foreground px-6 py-12 text-center text-sm" aria-busy="true">
+      Cargando convenios…
+    </div>
+  } @else if (error() && !lista.hasValue()) {
+    <div role="alert" class="tarjeta px-6 py-12 text-center">
+      <p class="text-base font-bold">No se pudo cargar la lista</p>
+      <p class="text-muted-foreground mt-1.5 text-sm">{{ error() }}</p>
+      <button type="button" class="btn-secundario mt-4" (click)="lista.reload()">Reintentar</button>
+    </div>
+  } @else {
+    <section class="tarjeta overflow-hidden" aria-label="Lista de convenios">
+      <div class="overflow-x-auto">
+        <table class="w-full min-w-220 border-collapse text-sm">
+          <thead>
+            <tr
+              class="bg-muted text-muted-foreground text-left text-xs font-bold tracking-wider uppercase [&>th]:border-b [&>th]:px-3.5 [&>th]:py-3 [&>th]:whitespace-nowrap"
+            >
+              <th scope="col" [attr.aria-sort]="tabla.ariaSort('folio')">
+                <app-encabezado-ordenable
+                  [direccion]="tabla.direccion('folio')"
+                  (ordenar)="tabla.ordenarPor('folio')"
+                  >Folio</app-encabezado-ordenable
+                >
+              </th>
+              <th scope="col" [attr.aria-sort]="tabla.ariaSort('titular')">
+                <app-encabezado-ordenable
+                  [direccion]="tabla.direccion('titular')"
+                  (ordenar)="tabla.ordenarPor('titular')"
+                  >Titular</app-encabezado-ordenable
+                >
+              </th>
+              <th scope="col" [attr.aria-sort]="tabla.ariaSort('prestamos')">
+                <app-encabezado-ordenable
+                  [direccion]="tabla.direccion('prestamos')"
+                  (ordenar)="tabla.ordenarPor('prestamos')"
+                  >Préstamos</app-encabezado-ordenable
+                >
+              </th>
+              <th scope="col" class="text-right" [attr.aria-sort]="tabla.ariaSort('convenido')">
+                <app-encabezado-ordenable
+                  [direccion]="tabla.direccion('convenido')"
+                  [alDerecha]="true"
+                  (ordenar)="tabla.ordenarPor('convenido')"
+                  >Convenido</app-encabezado-ordenable
+                >
+              </th>
+              <th scope="col" [attr.aria-sort]="tabla.ariaSort('pagos')">
+                <app-encabezado-ordenable
+                  [direccion]="tabla.direccion('pagos')"
+                  (ordenar)="tabla.ordenarPor('pagos')"
+                  >Pagos</app-encabezado-ordenable
+                >
+              </th>
+              <th scope="col" class="text-right" [attr.aria-sort]="tabla.ariaSort('saldo')">
+                <app-encabezado-ordenable
+                  [direccion]="tabla.direccion('saldo')"
+                  [alDerecha]="true"
+                  (ordenar)="tabla.ordenarPor('saldo')"
+                  >Saldo pendiente</app-encabezado-ordenable
+                >
+              </th>
+              <th scope="col" [attr.aria-sort]="tabla.ariaSort('estado')">
+                <app-encabezado-ordenable
+                  [direccion]="tabla.direccion('estado')"
+                  (ordenar)="tabla.ordenarPor('estado')"
+                  >Estado</app-encabezado-ordenable
+                >
+              </th>
+              <th scope="col" [attr.aria-sort]="tabla.ariaSort('fecha')">
+                <app-encabezado-ordenable
+                  [direccion]="tabla.direccion('fecha')"
+                  (ordenar)="tabla.ordenarPor('fecha')"
+                  >Fecha</app-encabezado-ordenable
+                >
+              </th>
+              <th scope="col"><span class="sr-only">Acciones</span></th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (f of tabla.pagina().elementos; track f.id) {
+              <tr
+                class="hover:bg-accent [&>td]:border-b [&>td]:px-3.5 [&>td]:py-3 [&>td]:whitespace-nowrap last:[&>td]:border-b-0"
+              >
+                <td class="font-mono text-xs font-bold">{{ f.folio }}</td>
+                <td>
+                  <div class="font-bold">{{ f.titular }}</div>
+                  <div class="text-muted-foreground mt-0.5 text-xs">
+                    Préstamo nuevo #{{ f.prestamoNuevo }}
+                  </div>
+                </td>
+                <td>{{ f.prestamos }}</td>
+                <td class="text-right tabular-nums">{{ f.convenido }}</td>
+                <td class="tabular-nums">{{ f.pagos }}</td>
+                <td class="text-right font-bold tabular-nums">{{ f.saldo }}</td>
+                <td>
+                  <span
+                    class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-bold whitespace-nowrap before:size-1.5 before:rounded-full before:bg-current"
+                    [class]="f.estado.clase"
+                  >
+                    {{ f.estado.texto }}
+                  </span>
+                </td>
+                <td class="tabular-nums">{{ f.fecha }}</td>
+                <td class="text-right">
+                  <button
+                    type="button"
+                    class="btn-secundario min-h-9 px-3 text-[13px]"
+                    [attr.aria-label]="'Ver el detalle del convenio ' + f.folio"
+                    (click)="enDetalle.set(f.id)"
+                  >
+                    Ver detalle
+                  </button>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+      @if (tabla.pagina().total === 0 && !lista.isLoading()) {
+        <div class="px-6 py-12 text-center">
+          <p class="text-base font-bold">Sin coincidencias</p>
+          <p class="text-muted-foreground mt-1.5 text-sm">
+            No hay convenios que coincidan con la búsqueda o el filtro.
+          </p>
+        </div>
+      }
+      <div class="border-t px-4.5 py-2.5">
+        <app-paginador
+          [pagina]="tabla.pagina()"
+          sustantivo="convenios"
+          (cambiar)="tabla.irA($event)"
+        />
+      </div>
+    </section>
+  }
+</div>
+
+@if (hoja(); as h) {
+  <app-hoja-simulacion [simulacion]="h" />
+}
+
+@if (detalle(); as d) {
+  <dialog
+    appDialogoModal
+    aria-labelledby="t-detalle"
+    class="bg-card text-foreground backdrop:bg-overlay mx-0 mt-auto mb-0 max-h-[94svh] w-full max-w-none rounded-t-3xl border border-b-0 p-0 shadow-2xl sm:m-auto sm:max-w-190 sm:rounded-2xl sm:border-b print:hidden"
+    (cerrar)="cerrarDetalle()"
+  >
+    <div class="flex items-start gap-3 border-b px-6 pt-6 pb-4">
+      <div class="min-w-0 flex-1">
+        @if (d.datos; as c) {
+          <div class="flex flex-wrap items-center gap-2.5">
+            <h2 id="t-detalle" class="text-xl font-extrabold">Convenio {{ c.folio }}</h2>
+            <span
+              class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-bold whitespace-nowrap before:size-1.5 before:rounded-full before:bg-current"
+              [class]="c.estado.clase"
+            >
+              {{ c.estado.texto }}
+            </span>
+          </div>
+          <p class="text-muted-foreground mt-1 text-sm">
+            {{ c.titular }} · préstamo nuevo #{{ c.prestamoNuevo }} · {{ c.plan }}
+          </p>
+        } @else {
+          <h2 id="t-detalle" class="text-xl font-extrabold">Convenio</h2>
+        }
+      </div>
+      <button
+        type="button"
+        class="btn-icono"
+        aria-label="Cerrar el detalle"
+        (click)="cerrarDetalle()"
+      >
+        <app-icono nombre="cerrar" />
+      </button>
+    </div>
+
+    @if (d.datos; as c) {
+      <div class="flex flex-col gap-5 px-6 py-5">
+        <dl class="grid grid-cols-2 gap-3 sm:grid-cols-3">
+          @for (dato of c.cifras; track dato.etiqueta) {
+            <div class="bg-muted rounded-xl border px-3.5 py-3">
+              <dt class="text-muted-foreground text-xs font-bold">{{ dato.etiqueta }}</dt>
+              <dd class="mt-1 text-base font-extrabold tabular-nums">{{ dato.valor }}</dd>
+            </div>
+          }
+        </dl>
+
+        <div>
+          <h3 class="mb-2 text-[15px] font-extrabold">Préstamos que se convinieron</h3>
+          <div class="overflow-x-auto rounded-xl border">
+            <table class="w-full min-w-140 border-collapse text-[13px]">
+              <thead>
+                <tr
+                  class="text-muted-foreground bg-muted text-left text-[11px] font-bold tracking-wider uppercase [&>th]:border-b [&>th]:px-3 [&>th]:py-2"
+                >
+                  <th scope="col">Préstamo</th>
+                  <th scope="col">A nombre de</th>
+                  <th scope="col">Estaba</th>
+                  <th scope="col" class="text-right">Cuotas</th>
+                  <th scope="col" class="text-right">Saldo convenido</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (p of c.prestamos; track p.id) {
+                  <tr class="[&>td]:border-b [&>td]:px-3 [&>td]:py-2.5 last:[&>td]:border-b-0">
+                    <td class="font-mono text-xs">#{{ p.id }}</td>
+                    <td class="font-semibold">
+                      {{ p.cliente }}
+                      @if (p.esTitular) {
+                        <span
+                          class="bg-primary-soft text-primary-ink ml-1.5 rounded-full px-1.75 py-px text-[11px] font-bold"
+                          >Titular</span
+                        >
+                      }
+                    </td>
+                    <td>
+                      <span
+                        class="inline-flex rounded-full px-2.5 py-0.5 text-xs font-bold"
+                        [class]="p.estaba.clase"
+                        >{{ p.estaba.texto }}</span
+                      >
+                    </td>
+                    <td class="text-right tabular-nums">{{ p.cuotas }}</td>
+                    <td class="text-right font-bold tabular-nums">{{ p.saldo }}</td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div>
+          <h3 class="mb-1 text-[15px] font-extrabold">Motivo</h3>
+          <p class="text-sm leading-normal">{{ c.motivo }}</p>
+        </div>
+
+        <div>
+          <h3 class="mb-2.5 text-[15px] font-extrabold">Bitácora</h3>
+          <ol class="flex flex-col gap-3">
+            @for (b of c.bitacora; track b.titulo) {
+              <li class="flex items-start gap-3 text-[13px]">
+                <span
+                  class="inline-flex size-7 shrink-0 items-center justify-center rounded-full"
+                  [class]="
+                    b.cancelacion ? 'bg-destructive-soft text-destructive' : 'bg-ok-soft text-ok'
+                  "
+                  aria-hidden="true"
+                >
+                  <app-icono [nombre]="b.cancelacion ? 'cerrar' : 'palomita'" class="size-4" />
+                </span>
+                <span class="min-w-0 flex-1">
+                  <span class="block font-bold">{{ b.titulo }}</span>
+                  <span class="text-muted-foreground block">{{ b.detalle }}</span>
+                  @if (b.nota) {
+                    <span class="mt-0.5 block">“{{ b.nota }}”</span>
+                  }
+                </span>
+              </li>
+            }
+          </ol>
+        </div>
+
+        @if (c.motivoNoCancelable; as motivo) {
+          <p
+            class="bg-aviso-soft text-aviso flex items-start gap-2.5 rounded-lg px-3 py-2.5 text-[12.5px] leading-normal font-semibold"
+            role="note"
+          >
+            <app-icono nombre="info" class="mt-px size-4" />
+            <span>{{ motivo }}</span>
+          </p>
+        }
+      </div>
+
+      <div class="flex flex-col-reverse gap-3 border-t px-6 pt-4 pb-6 sm:flex-row sm:flex-wrap">
+        @if (c.puedeCancelar) {
+          <button
+            type="button"
+            class="btn border-destructive text-destructive hover:bg-destructive-soft border sm:mr-auto"
+            (click)="abrirCancelar()"
+          >
+            Cancelar convenio
+          </button>
+        }
+        @if (!c.cancelado) {
+          <button type="button" class="btn-secundario sm:ml-auto" (click)="imprimir()">
+            <app-icono nombre="imprimir" />
+            Imprimir convenio
+          </button>
+        }
+        <button type="button" class="btn-primario" (click)="cerrarDetalle()">Cerrar</button>
+      </div>
+    } @else if (d.error) {
+      <div role="alert" class="px-6 py-10 text-center">
+        <p class="text-muted-foreground text-sm">{{ d.error }}</p>
+        <button type="button" class="btn-secundario mt-4" (click)="cerrarDetalle()">Cerrar</button>
+      </div>
+    } @else {
+      <p class="text-muted-foreground px-6 py-10 text-center text-sm" aria-busy="true">
+        Cargando el convenio…
+      </p>
+    }
+  </dialog>
+}
+
+@if (cancelando() && detalle()?.datos; as c) {
+  <dialog
+    appDialogoModal
+    aria-labelledby="t-cancelar"
+    class="bg-card text-foreground backdrop:bg-overlay mx-0 mt-auto mb-0 w-full max-w-none rounded-t-3xl border border-b-0 p-0 shadow-2xl sm:m-auto sm:max-w-120 sm:rounded-2xl sm:border-b print:hidden"
+    (cerrar)="cerrarCancelar()"
+  >
+    <div class="px-6 pt-6 pb-2">
+      <h2 id="t-cancelar" class="text-xl font-extrabold">¿Cancelar el convenio {{ c.folio }}?</h2>
+      <p class="text-muted-foreground mt-1.5 text-sm">
+        El convenio no se borra: queda cancelado en la bitácora.
+      </p>
+    </div>
+    <div class="flex flex-col gap-3.5 px-6 py-3">
+      <p
+        class="bg-destructive-soft text-destructive flex items-start gap-2.5 rounded-lg px-3 py-2.5 text-[12.5px] leading-normal font-semibold"
+        role="note"
+      >
+        <app-icono nombre="alerta" class="mt-px size-4" />
+        <span>{{ c.efecto }}</span>
+      </p>
+      <div>
+        <label class="mb-1.5 block text-[13px] font-bold" for="f-motivo-cancelar"
+          >Motivo de la cancelación</label
+        >
+        <textarea
+          id="f-motivo-cancelar"
+          class="entrada min-h-22 resize-y py-2.5"
+          [attr.maxlength]="motivoMaximo"
+          placeholder="Ej.: el cliente no aceptó las condiciones; se capturó por error."
+          aria-describedby="f-motivo-cancelar-ayuda"
+          [attr.aria-invalid]="!!errorMotivo() || null"
+          [value]="motivoCancelar()"
+          (input)="motivoCancelar.set(texto($event))"
+        ></textarea>
+        <p
+          id="f-motivo-cancelar-ayuda"
+          class="mt-1.5 text-xs"
+          [class]="errorMotivo() ? 'text-destructive font-semibold' : 'text-muted-foreground'"
+        >
+          {{
+            errorMotivo() ||
+              'Queda en la bitácora junto con quién lo canceló. ' +
+                motivoCancelar().length +
+                '/' +
+                motivoMaximo
+          }}
+        </p>
+      </div>
+      @if (errorCancelar()) {
+        <p
+          role="alert"
+          class="bg-destructive-soft text-destructive rounded-lg px-3.5 py-2.5 text-sm font-semibold"
+        >
+          {{ errorCancelar() }}
+        </p>
+      }
+    </div>
+    <div class="flex flex-col-reverse gap-3 border-t px-6 pt-4 pb-6 sm:flex-row sm:justify-end">
+      <button
+        type="button"
+        class="btn-secundario"
+        [disabled]="enviando()"
+        (click)="cerrarCancelar()"
+      >
+        No, volver
+      </button>
+      <button type="button" class="btn-peligro" [disabled]="enviando()" (click)="cancelar()">
+        {{ enviando() ? 'Cancelando…' : 'Sí, cancelar convenio' }}
+      </button>
+    </div>
+  </dialog>
+}

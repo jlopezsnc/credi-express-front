@@ -18,6 +18,11 @@ Cálculo del alta: `src/app/features/prestamos/calculo-prestamo.ts`. Tipos de la
 
 ## `GET /prestamos` ✅ (2026-10-30)
 
+> **Convenios (2026-10-30)**: nuevo estado `EN_CONVENIO` (saldo 0, con `folioConvenio`), filtros
+> `AL_CORRIENTE` y `EN_CONVENIO`, orden `PRESTAMO` y `VENCIDAS`, parámetro `idCliente`, búsqueda por
+> número de préstamo y `folioConvenioOrigen` en el préstamo que generó un convenio. Detalle:
+> [API-CONVENIOS.md](API-CONVENIOS.md#2-lista-de-préstamos-a-convenir).
+
 Lista de préstamos **calculada en el back**: el front no agrupa cuotas ni calcula nada. Filtro,
 búsqueda, orden y paginación se resuelven en SQL (`PrestamoConsultaRepository`).
 

@@ -32,6 +32,8 @@ const FILTROS: readonly {
   { id: 'ACTIVOS', etiqueta: 'Activos', cantidad: (c) => c.activos },
   { id: 'CON_ATRASO', etiqueta: 'Con atraso', cantidad: (c) => c.conAtraso },
   { id: 'LIQUIDADOS', etiqueta: 'Liquidados', cantidad: (c) => c.liquidados },
+  { id: 'EN_CONVENIO', etiqueta: 'En convenio', cantidad: (c) => c.enConvenio ?? 0 },
+  { id: 'CANCELADOS', etiqueta: 'Cancelados', cantidad: (c) => c.cancelados ?? 0 },
   { id: 'TODOS', etiqueta: 'Todos', cantidad: (c) => c.todos },
 ];
 
@@ -60,6 +62,8 @@ const ESTADOS_PRESTAMO: Record<SituacionPrestamo, { texto: string; clase: string
   AL_CORRIENTE: { texto: 'Al corriente', clase: 'bg-ok-soft text-ok' },
   CON_ATRASO: { texto: 'Con atraso', clase: 'bg-atraso-soft text-atraso' },
   LIQUIDADO: { texto: 'Liquidado', clase: 'bg-neutro-soft text-neutro' },
+  EN_CONVENIO: { texto: 'En convenio', clase: 'bg-primary-soft text-primary-ink' },
+  CANCELADO: { texto: 'Cancelado', clase: 'bg-destructive-soft text-destructive' },
 };
 
 const ESTATUS_CUOTA: Record<EstatusCuota, { texto: string; clase: string }> = {
@@ -67,6 +71,8 @@ const ESTATUS_CUOTA: Record<EstatusCuota, { texto: string; clase: string }> = {
   VENCIDA: { texto: 'Vencida', clase: 'bg-atraso-soft text-atraso' },
   ABONO_PARCIAL: { texto: 'Abono parcial', clase: 'bg-aviso-soft text-aviso' },
   PENDIENTE: { texto: 'Pendiente', clase: 'bg-neutro-soft text-neutro' },
+  EN_CONVENIO: { texto: 'En convenio', clase: 'bg-primary-soft text-primary-ink' },
+  CANCELADA: { texto: 'Cancelada', clase: 'bg-destructive-soft text-destructive' },
 };
 
 /** Lo que la tabla y las tarjetas muestran de cada préstamo, ya formateado. */
@@ -84,14 +90,24 @@ interface FilaPrestamo {
   proximo: string;
 }
 
+/** En convenio se muestra el folio: es lo que hay que buscar para cobrar. */
+function estadoDe(p: PrestamoResumen): { texto: string; clase: string } {
+  const estado = ESTADOS_PRESTAMO[p.estado];
+  return p.estado === 'EN_CONVENIO' && p.folioConvenio
+    ? { ...estado, texto: `${estado.texto} ${p.folioConvenio}` }
+    : estado;
+}
+
 function fila(p: PrestamoResumen): FilaPrestamo {
   return {
     id: p.idPrestamo,
     cliente: p.cliente.nombreCompleto,
-    modalidad: p.modalidad.descripcion,
+    modalidad: p.folioConvenioOrigen
+      ? `${p.modalidad.descripcion} · Convenio ${p.folioConvenioOrigen}`
+      : p.modalidad.descripcion,
     iniciales: iniciales(p.cliente.nombreCompleto),
     avatar: claseAvatar(p.cliente.idCliente),
-    estado: ESTADOS_PRESTAMO[p.estado],
+    estado: estadoDe(p),
     avance: `${String(p.cuotasPagadas)} de ${String(p.numeroCuotas)}`,
     cuota: formatearMoneda(p.importeCuota),
     total: formatearMoneda(p.totalPagar),
@@ -179,7 +195,7 @@ export class Prestamos {
       datos: d && {
         cliente: d.prestamo.cliente.nombreCompleto,
         subtitulo: `Préstamo #${String(id)} · ${String(d.prestamo.numeroCuotas)} pagos · ${d.prestamo.modalidad.descripcion}`,
-        estado: ESTADOS_PRESTAMO[d.prestamo.estado],
+        estado: estadoDe(d.prestamo),
         total: formatearMoneda(d.prestamo.totalPagar),
         saldo: formatearMoneda(d.prestamo.saldoPendiente),
         vencidas: d.prestamo.cuotasVencidas,

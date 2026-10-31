@@ -1,0 +1,801 @@
+<header class="print:hidden">
+  <p class="text-muted-foreground mb-1.5 text-[13px] font-semibold">
+    Operación /
+    <a routerLink="/convenios" class="hover:text-foreground underline-offset-2 hover:underline"
+      >Convenios</a
+    >
+    / Nuevo
+  </p>
+  <h1 class="text-[26px] font-extrabold tracking-tight lg:text-[32px]">Nuevo convenio</h1>
+  <p class="text-muted-foreground mt-1.5 text-sm">
+    Junta en un solo plan de pagos los préstamos vigentes o vencidos que en la práctica paga una
+    misma persona, aunque estén a nombre de familiares.
+  </p>
+</header>
+
+<div class="grid grid-cols-1 items-start gap-6 xl:grid-cols-[minmax(0,1fr)_400px] print:hidden">
+  <form
+    class="tarjeta divide-border min-w-0 divide-y"
+    novalidate
+    aria-label="Datos del convenio"
+    (submit)="$event.preventDefault()"
+  >
+    <!-- 1. Titular -->
+    <section class="flex flex-col gap-4 px-4 py-4.5 lg:px-6 lg:py-5.5" aria-labelledby="t-titular">
+      <div class="flex items-center gap-2.5">
+        <span
+          class="bg-primary-soft text-primary-ink inline-flex size-6.5 shrink-0 items-center justify-center rounded-full text-[13px] font-extrabold"
+          >1</span
+        >
+        <h2 id="t-titular" class="text-[17px] font-extrabold">Titular del convenio</h2>
+      </div>
+
+      @if (titular(); as cliente) {
+        <div
+          class="border-primary bg-primary-soft flex items-center gap-3 rounded-xl border px-3.5 py-3"
+        >
+          <span
+            class="inline-flex size-9.5 shrink-0 items-center justify-center rounded-full text-[13px] font-extrabold"
+            [class]="avatarTitular()?.clase"
+          >
+            {{ avatarTitular()?.iniciales }}
+          </span>
+          <div class="min-w-0 flex-1">
+            <div class="truncate text-[15px] font-bold">{{ cliente.nombreCompleto }}</div>
+            <div class="text-muted-foreground mt-0.5 font-mono text-xs">
+              {{ cliente.curp }} · {{ cliente.telefono || 'Sin teléfono' }}
+            </div>
+          </div>
+          <button
+            type="button"
+            class="text-primary-ink hover:text-foreground min-h-9 cursor-pointer px-1 text-[13px] font-bold"
+            (click)="titularId.set(undefined)"
+          >
+            Cambiar
+          </button>
+        </div>
+        <p class="text-muted-foreground -mt-2 text-xs">
+          Es quien firma y paga. El nuevo calendario de pagos queda a su nombre.
+        </p>
+      } @else {
+        <div>
+          <label class="mb-1.5 block text-[13px] font-bold" for="f-buscar-titular"
+            >Buscar cliente</label
+          >
+          <div
+            class="bg-card text-muted-foreground focus-within:border-primary focus-within:ring-primary-soft flex min-h-11 items-center gap-2.5 rounded-lg border px-3.5 focus-within:ring-3"
+            [class.border-destructive]="errorTitular()"
+          >
+            <app-icono nombre="buscar" />
+            <input
+              id="f-buscar-titular"
+              type="search"
+              autocomplete="off"
+              placeholder="Nombre o CURP"
+              class="text-foreground placeholder:text-muted-foreground w-full min-w-0 bg-transparent text-sm outline-none"
+              aria-describedby="f-titular-ayuda"
+              [attr.aria-invalid]="errorTitular() || null"
+              [value]="busquedaTitular()"
+              (input)="busquedaTitular.set(texto($event))"
+            />
+          </div>
+          <p
+            id="f-titular-ayuda"
+            class="mt-1.5 text-xs"
+            [class]="errorTitular() ? 'text-destructive font-semibold' : 'text-muted-foreground'"
+          >
+            {{
+              errorTitular()
+                ? 'Elige al titular del convenio.'
+                : 'Quien firmará y pagará el convenio. Solo clientes activos.'
+            }}
+          </p>
+          @if (clientes.cargando() && clientes.clientes().length === 0) {
+            <p class="text-muted-foreground mx-3 my-2 text-sm" aria-busy="true">
+              Cargando clientes…
+            </p>
+          } @else if (clientes.error() && clientes.clientes().length === 0) {
+            <div
+              role="alert"
+              class="bg-destructive-soft text-destructive mt-2 flex flex-wrap items-center justify-between gap-3 rounded-lg px-4 py-3 text-sm font-semibold"
+            >
+              {{ clientes.error() }}
+              <button type="button" class="btn-secundario min-h-9" (click)="clientes.cargar()">
+                Reintentar
+              </button>
+            </div>
+          } @else {
+            <ul class="mt-2 flex flex-col gap-0.5" aria-label="Clientes encontrados">
+              @for (r of resultadosTitular(); track r.cliente.id) {
+                <li>
+                  <button
+                    type="button"
+                    class="hover:bg-accent flex min-h-14 w-full cursor-pointer items-center gap-3 rounded-lg px-3 py-2 text-left disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:bg-transparent"
+                    [disabled]="!r.cliente.activo"
+                    [attr.aria-label]="
+                      r.cliente.activo
+                        ? 'Elegir a ' + r.cliente.nombreCompleto + ' como titular'
+                        : r.cliente.nombreCompleto + ', inactivo'
+                    "
+                    (click)="elegirTitular(r.cliente)"
+                  >
+                    <span
+                      class="inline-flex size-9.5 shrink-0 items-center justify-center rounded-full text-[13px] font-extrabold"
+                      [class]="r.avatar"
+                    >
+                      {{ r.iniciales }}
+                    </span>
+                    <span class="min-w-0 flex-1">
+                      <span class="block truncate text-sm font-bold">{{
+                        r.cliente.nombreCompleto
+                      }}</span>
+                      <span class="text-muted-foreground mt-0.5 block font-mono text-xs">{{
+                        r.cliente.curp
+                      }}</span>
+                    </span>
+                  </button>
+                </li>
+              } @empty {
+                <li class="text-muted-foreground mx-3 my-2 text-sm">
+                  No hay clientes que coincidan.
+                </li>
+              }
+            </ul>
+          }
+        </div>
+      }
+    </section>
+
+    <!-- 2. Préstamos a convenir -->
+    <section
+      class="flex min-w-0 flex-col gap-4 px-4 py-4.5 lg:px-6 lg:py-5.5"
+      aria-labelledby="t-prestamos"
+    >
+      <div class="flex items-center gap-2.5">
+        <span
+          class="bg-primary-soft text-primary-ink inline-flex size-6.5 shrink-0 items-center justify-center rounded-full text-[13px] font-extrabold"
+          >2</span
+        >
+        <h2 id="t-prestamos" class="text-[17px] font-extrabold">Préstamos a convenir</h2>
+      </div>
+      <p class="text-muted-foreground -mt-2 text-xs">
+        Elige uno o varios préstamos con saldo, de cualquier cliente. Los liquidados y los que ya
+        están en convenio no aparecen.
+      </p>
+
+      <div class="flex flex-wrap items-center gap-3">
+        <label
+          class="bg-card text-muted-foreground focus-within:border-primary focus-within:ring-primary-soft flex min-h-11 flex-[1_1_260px] items-center gap-2.5 rounded-lg border px-3.5 focus-within:ring-3"
+        >
+          <app-icono nombre="buscar" />
+          <input
+            type="search"
+            placeholder="Buscar por cliente o número de préstamo"
+            aria-label="Buscar préstamos por cliente o número"
+            class="text-foreground placeholder:text-muted-foreground w-full min-w-0 bg-transparent text-sm outline-none"
+            [value]="busqueda()"
+            (input)="busqueda.set(texto($event))"
+          />
+        </label>
+        @if (pendientesDelTitular().length > 0) {
+          <button type="button" class="btn-secundario" (click)="incluirDelTitular()">
+            Incluir los de {{ nombreCortoTitular() }} ({{ pendientesDelTitular().length }})
+          </button>
+        }
+      </div>
+
+      <div
+        role="group"
+        aria-label="Filtrar préstamos"
+        class="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 lg:mx-0 lg:flex-wrap lg:overflow-visible lg:px-0 lg:pb-0"
+      >
+        @for (f of filtros(); track f.id) {
+          @let activo = filtro() === f.id;
+          <button
+            type="button"
+            [attr.aria-pressed]="activo"
+            class="inline-flex min-h-9 shrink-0 cursor-pointer items-center gap-2 rounded-full border px-3.5 text-[13px] font-semibold whitespace-nowrap"
+            [class]="
+              activo
+                ? 'bg-foreground text-card border-foreground'
+                : 'bg-card text-muted-foreground hover:text-foreground'
+            "
+            (click)="filtro.set(f.id)"
+          >
+            {{ f.etiqueta }}
+            <span
+              class="rounded-full px-1.75 py-px text-xs tabular-nums"
+              [class]="activo ? 'bg-neutral-500/30' : 'bg-accent text-foreground'"
+            >
+              {{ f.cantidad }}
+            </span>
+          </button>
+        }
+      </div>
+
+      <app-orden-movil
+        class="lg:hidden"
+        campo="orden-convenio"
+        [columnas]="columnas"
+        [orden]="tabla.orden()"
+        (cambiar)="ordenarMovil($event)"
+      />
+
+      @if (errorLista(); as mensaje) {
+        <div
+          role="alert"
+          class="bg-destructive-soft text-destructive flex flex-wrap items-center justify-between gap-3 rounded-lg px-4 py-3 text-sm font-semibold"
+        >
+          {{ mensaje }}
+          <button type="button" class="btn-secundario min-h-9" (click)="lista.reload()">
+            Reintentar
+          </button>
+        </div>
+      }
+
+      <div class="overflow-x-auto rounded-xl border">
+        <table class="w-full min-w-160 border-collapse text-sm" aria-label="Préstamos con saldo">
+          <thead>
+            <tr
+              class="bg-muted text-muted-foreground text-left text-xs font-bold tracking-wider uppercase [&>th]:border-b [&>th]:px-3 [&>th]:py-3 [&>th]:whitespace-nowrap"
+            >
+              <th scope="col" class="w-11"><span class="sr-only">Incluir</span></th>
+              <th scope="col" [attr.aria-sort]="tabla.ariaSort('cliente')">
+                <app-encabezado-ordenable
+                  [direccion]="tabla.direccion('cliente')"
+                  (ordenar)="tabla.ordenarPor('cliente')"
+                  >Cliente</app-encabezado-ordenable
+                >
+              </th>
+              <th scope="col" [attr.aria-sort]="tabla.ariaSort('prestamo')">
+                <app-encabezado-ordenable
+                  [direccion]="tabla.direccion('prestamo')"
+                  (ordenar)="tabla.ordenarPor('prestamo')"
+                  >Préstamo</app-encabezado-ordenable
+                >
+              </th>
+              <th scope="col" [attr.aria-sort]="tabla.ariaSort('pagos')">
+                <app-encabezado-ordenable
+                  [direccion]="tabla.direccion('pagos')"
+                  (ordenar)="tabla.ordenarPor('pagos')"
+                  >Pagos</app-encabezado-ordenable
+                >
+              </th>
+              <th scope="col" class="text-right" [attr.aria-sort]="tabla.ariaSort('vencidas')">
+                <app-encabezado-ordenable
+                  [direccion]="tabla.direccion('vencidas')"
+                  [alDerecha]="true"
+                  (ordenar)="tabla.ordenarPor('vencidas')"
+                  >Vencidas</app-encabezado-ordenable
+                >
+              </th>
+              <th scope="col" class="text-right" [attr.aria-sort]="tabla.ariaSort('saldo')">
+                <app-encabezado-ordenable
+                  [direccion]="tabla.direccion('saldo')"
+                  [alDerecha]="true"
+                  (ordenar)="tabla.ordenarPor('saldo')"
+                  >Saldo</app-encabezado-ordenable
+                >
+              </th>
+              <th scope="col" [attr.aria-sort]="tabla.ariaSort('estado')">
+                <app-encabezado-ordenable
+                  [direccion]="tabla.direccion('estado')"
+                  (ordenar)="tabla.ordenarPor('estado')"
+                  >Estado</app-encabezado-ordenable
+                >
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (f of filas(); track f.prestamo.idPrestamo) {
+              <tr
+                class="[&>td]:border-b [&>td]:px-3 [&>td]:py-3 [&>td]:whitespace-nowrap last:[&>td]:border-b-0"
+                [class.bg-primary-soft]="f.seleccionado"
+              >
+                <td>
+                  <input
+                    type="checkbox"
+                    class="accent-primary size-4.5 cursor-pointer"
+                    [checked]="f.seleccionado"
+                    [attr.aria-label]="
+                      (f.seleccionado ? 'Quitar' : 'Incluir') +
+                      ' el préstamo #' +
+                      f.prestamo.idPrestamo +
+                      ' de ' +
+                      f.prestamo.cliente.nombreCompleto
+                    "
+                    (change)="alternar(f.prestamo)"
+                  />
+                </td>
+                <td class="font-semibold">
+                  {{ f.prestamo.cliente.nombreCompleto }}
+                  @if (f.esTitular) {
+                    <span
+                      class="bg-primary-soft text-primary-ink ml-1.5 rounded-full px-1.75 py-px text-[11px] font-bold"
+                      >Titular</span
+                    >
+                  }
+                </td>
+                <td class="text-muted-foreground font-mono text-xs">
+                  #{{ f.prestamo.idPrestamo }}
+                </td>
+                <td class="tabular-nums">{{ f.pagos }}</td>
+                <td class="text-right tabular-nums">{{ f.prestamo.cuotasVencidas }}</td>
+                <td class="text-right font-bold tabular-nums">{{ f.saldo }}</td>
+                <td>
+                  <span
+                    class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-bold whitespace-nowrap before:size-1.5 before:rounded-full before:bg-current"
+                    [class]="f.estado.clase"
+                  >
+                    {{ f.estado.texto }}
+                  </span>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+        @if (tabla.pagina().total === 0 && !lista.isLoading()) {
+          <p class="text-muted-foreground px-4 py-5 text-center text-sm">
+            No hay préstamos con saldo que coincidan.
+          </p>
+        }
+      </div>
+
+      <app-paginador
+        [pagina]="tabla.pagina()"
+        sustantivo="préstamos"
+        (cambiar)="tabla.irA($event)"
+      />
+
+      @if (errorSeleccion()) {
+        <p class="text-destructive -mt-2 text-xs font-semibold">Elige al menos un préstamo.</p>
+      }
+
+      @if (otrasPersonas().length > 0) {
+        <p
+          class="bg-primary-soft text-primary-ink flex items-start gap-2.5 rounded-lg px-3 py-2.5 text-[12.5px] leading-normal font-semibold"
+          role="note"
+        >
+          <app-icono nombre="info" class="mt-px size-4" />
+          <span>
+            Incluye préstamos a nombre de otras personas ({{ otrasPersonas().join(', ') }}).
+            Quedarán ligados a este convenio y su saldo lo pagará {{ titular()?.nombreCompleto }}.
+          </span>
+        </p>
+      }
+    </section>
+
+    <!-- 3. Plan de pagos -->
+    <section class="flex flex-col gap-4 px-4 py-4.5 lg:px-6 lg:py-5.5" aria-labelledby="t-plan">
+      <div class="flex items-center gap-2.5">
+        <span
+          class="bg-primary-soft text-primary-ink inline-flex size-6.5 shrink-0 items-center justify-center rounded-full text-[13px] font-extrabold"
+          >3</span
+        >
+        <h2 id="t-plan" class="text-[17px] font-extrabold">Plan de pagos</h2>
+      </div>
+      <div>
+        <span class="mb-1.5 block text-[13px] font-bold" id="l-periodicidad">Periodicidad</span>
+        <div
+          class="bg-muted grid w-full grid-cols-2 gap-1 rounded-xl border p-1 lg:max-w-120"
+          role="group"
+          aria-labelledby="l-periodicidad"
+        >
+          @for (p of periodicidades; track p.id) {
+            @let activo = p.id === idPeriodicidad();
+            <button
+              type="button"
+              class="min-h-10.5 cursor-pointer rounded-[9px] text-sm font-bold"
+              [class]="
+                activo
+                  ? 'bg-card text-foreground shadow-sm'
+                  : 'text-muted-foreground hover:text-foreground'
+              "
+              [attr.aria-pressed]="activo"
+              (click)="elegirPeriodicidad(p.id)"
+            >
+              {{ p.etiqueta }}
+            </button>
+          }
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:max-w-140">
+        <div>
+          <label class="mb-1.5 block text-[13px] font-bold" for="f-pagos">Número de pagos</label>
+          <div
+            class="bg-card flex max-w-55 items-center overflow-hidden rounded-lg border"
+            [class.border-destructive]="!!errorPagos()"
+          >
+            <button
+              type="button"
+              class="hover:bg-accent min-h-12.5 w-11 cursor-pointer text-xl font-bold"
+              aria-label="Un pago menos"
+              (click)="cambiarPagos(-1)"
+            >
+              −
+            </button>
+            <input
+              id="f-pagos"
+              type="text"
+              inputmode="numeric"
+              autocomplete="off"
+              class="min-h-12.5 w-15 min-w-0 flex-1 border-x bg-transparent text-center text-xl font-extrabold tabular-nums outline-none"
+              aria-describedby="f-pagos-ayuda"
+              [attr.aria-invalid]="!!errorPagos() || null"
+              [value]="pagos()"
+              (input)="pagos.set(texto($event)); verTodo.set(false)"
+            />
+            <button
+              type="button"
+              class="hover:bg-accent min-h-12.5 w-11 cursor-pointer text-xl font-bold"
+              aria-label="Un pago más"
+              (click)="cambiarPagos(1)"
+            >
+              +
+            </button>
+          </div>
+          <p
+            id="f-pagos-ayuda"
+            class="mt-1.5 text-xs"
+            [class]="errorPagos() ? 'text-destructive font-semibold' : 'text-muted-foreground'"
+          >
+            {{ errorPagos() || 'Libre, de 1 a 52 pagos.' }}
+          </p>
+        </div>
+        <div>
+          <label class="mb-1.5 block text-[13px] font-bold" for="f-inicio"
+            >Fecha del primer pago</label
+          >
+          <input
+            id="f-inicio"
+            class="entrada min-h-12.5"
+            type="date"
+            aria-describedby="f-inicio-ayuda"
+            [min]="hoy"
+            [attr.aria-invalid]="!!errorFecha() || null"
+            [value]="fechaInicio()"
+            (input)="fechaInicio.set(texto($event))"
+          />
+          <p
+            id="f-inicio-ayuda"
+            class="mt-1.5 text-xs"
+            [class]="errorFecha() ? 'text-destructive font-semibold' : 'text-muted-foreground'"
+          >
+            {{ errorFecha() || 'Los siguientes pagos se calculan a partir de esta fecha.' }}
+          </p>
+        </div>
+      </div>
+
+      <div class="max-w-55">
+        <label class="mb-1.5 block text-[13px] font-bold" for="f-tasa"
+          >Interés mensual (opcional)</label
+        >
+        <div
+          class="bg-card focus-within:border-primary focus-within:ring-primary-soft flex min-h-13 items-center gap-2 rounded-lg border px-3.5 focus-within:ring-3"
+          [class.border-destructive]="errorTasa()"
+        >
+          <input
+            id="f-tasa"
+            type="text"
+            inputmode="decimal"
+            autocomplete="off"
+            placeholder="0"
+            class="placeholder:text-muted-foreground w-full min-w-0 bg-transparent text-right text-xl font-bold tabular-nums outline-none"
+            aria-describedby="f-tasa-ayuda"
+            [attr.aria-invalid]="!!errorTasa() || null"
+            [value]="tasa()"
+            (input)="tasa.set(texto($event))"
+          />
+          <span class="text-muted-foreground text-xl font-bold">%</span>
+        </div>
+      </div>
+      <p
+        id="f-tasa-ayuda"
+        class="-mt-2.5 text-xs"
+        [class]="errorTasa() ? 'text-destructive font-semibold' : 'text-muted-foreground'"
+      >
+        {{ errorTasa() || 'El convenio normalmente va sin interés: déjalo en 0%.' }}
+      </p>
+      @if (conInteres()) {
+        <p
+          class="bg-aviso-soft text-aviso flex items-start gap-2.5 rounded-lg px-3 py-2.5 text-[12.5px] leading-normal font-semibold"
+          role="note"
+        >
+          <app-icono nombre="alerta" class="mt-px size-4" />
+          <span>Caso excepcional: este convenio cobrará interés. Explica el motivo abajo.</span>
+        </p>
+      }
+    </section>
+
+    <!-- 4. Motivo -->
+    <section class="flex flex-col gap-4 px-4 py-4.5 lg:px-6 lg:py-5.5" aria-labelledby="t-motivo">
+      <div class="flex items-center gap-2.5">
+        <span
+          class="bg-primary-soft text-primary-ink inline-flex size-6.5 shrink-0 items-center justify-center rounded-full text-[13px] font-extrabold"
+          >4</span
+        >
+        <h2 id="t-motivo" class="text-[17px] font-extrabold">Motivo</h2>
+      </div>
+      <div>
+        <label class="mb-1.5 block text-[13px] font-bold" for="f-motivo"
+          >¿Por qué se hace el convenio?</label
+        >
+        <textarea
+          id="f-motivo"
+          class="entrada min-h-22 resize-y py-2.5"
+          [attr.maxlength]="motivoMaximo"
+          placeholder="Ej.: los préstamos de su hermana y de su papá los paga ella; se juntan en un solo plan."
+          aria-describedby="f-motivo-ayuda"
+          [attr.aria-invalid]="!!errorMotivo() || null"
+          [value]="motivo()"
+          (input)="motivo.set(texto($event))"
+        ></textarea>
+        <p
+          id="f-motivo-ayuda"
+          class="mt-1.5 text-xs"
+          [class]="errorMotivo() ? 'text-destructive font-semibold' : 'text-muted-foreground'"
+        >
+          {{
+            errorMotivo() ||
+              'Queda registrado en el convenio junto con quién lo generó. ' +
+                motivo().length +
+                '/' +
+                motivoMaximo
+          }}
+        </p>
+      </div>
+    </section>
+  </form>
+
+  <!-- Resumen -->
+  <aside class="xl:sticky xl:top-6" aria-label="Resumen del convenio">
+    <div class="tarjeta flex flex-col gap-4.5 px-4 py-5 lg:px-6 lg:py-5.5">
+      <div>
+        <p class="text-muted-foreground text-[13px] font-bold">Pago por cuota</p>
+        <p class="mt-1 text-[34px] font-extrabold tracking-tight tabular-nums">
+          {{ resumen().cuota }}
+        </p>
+        <p class="text-muted-foreground mt-0.5 text-sm">{{ resumen().detalle }}</p>
+      </div>
+
+      @if (errorSimulacion(); as mensaje) {
+        <p
+          role="alert"
+          class="bg-destructive-soft text-destructive rounded-lg px-3.5 py-2.5 text-sm font-semibold"
+        >
+          {{ mensaje }}
+        </p>
+      }
+
+      <dl class="flex flex-col gap-2.5 border-t pt-3.5 text-sm">
+        <div class="flex items-baseline justify-between gap-3">
+          <dt class="text-muted-foreground">Titular</dt>
+          <dd class="max-w-55 truncate text-right font-bold">
+            {{ titular()?.nombreCompleto ?? '—' }}
+          </dd>
+        </div>
+        <div class="flex items-baseline justify-between gap-3">
+          <dt class="text-muted-foreground">Préstamos incluidos</dt>
+          <dd class="text-right font-bold">{{ resumen().incluidos }}</dd>
+        </div>
+        <div class="flex items-baseline justify-between gap-3">
+          <dt class="text-muted-foreground">Saldo a convenir</dt>
+          <dd class="text-right font-bold tabular-nums">{{ resumen().saldo }}</dd>
+        </div>
+        <div class="flex items-baseline justify-between gap-3">
+          <dt class="text-muted-foreground">Interés</dt>
+          <dd class="text-right font-bold tabular-nums">{{ resumen().interes }}</dd>
+        </div>
+        <div class="flex items-baseline justify-between gap-3 border-t pt-2.5 text-base">
+          <dt class="font-bold">Total del convenio</dt>
+          <dd class="text-right font-extrabold tabular-nums">{{ resumen().total }}</dd>
+        </div>
+      </dl>
+
+      @if (elegidos().length > 0) {
+        <div>
+          <h2 class="mb-2 text-[15px] font-extrabold">Se convienen</h2>
+          <ul class="flex flex-col gap-1.5">
+            @for (e of elegidos(); track e.id) {
+              <li class="flex items-center gap-2.5 rounded-lg border py-2 pr-2 pl-3 text-[13px]">
+                <span class="min-w-0 flex-1">
+                  <span class="block truncate font-bold">#{{ e.id }} · {{ e.cliente }}</span>
+                  <span class="text-muted-foreground">{{ e.detalle }}</span>
+                </span>
+                <span class="font-bold tabular-nums">{{ e.saldo }}</span>
+                <button
+                  type="button"
+                  class="btn-icono size-9 border-transparent"
+                  [attr.aria-label]="'Quitar el préstamo #' + e.id"
+                  (click)="quitar(e.id)"
+                >
+                  <app-icono nombre="cerrar" class="size-4" />
+                </button>
+              </li>
+            }
+          </ul>
+        </div>
+      }
+
+      <div>
+        <div class="mb-1 flex items-center justify-between gap-3">
+          <h2 class="text-[15px] font-extrabold">Calendario del convenio</h2>
+          @if (puedeVerTodo()) {
+            <button
+              type="button"
+              class="text-primary-ink hover:text-foreground min-h-9 cursor-pointer px-1 text-[13px] font-bold"
+              [attr.aria-expanded]="verTodo()"
+              (click)="verTodo.set(!verTodo())"
+            >
+              {{ verTodo() ? 'Ver menos' : 'Ver los ' + totalPagos() + ' pagos' }}
+            </button>
+          }
+        </div>
+        @if (calendario().length > 0) {
+          <table class="w-full border-collapse text-[13px]">
+            <thead>
+              <tr
+                class="text-muted-foreground text-left text-[11px] font-bold tracking-wider uppercase [&>th]:border-b [&>th]:py-2"
+              >
+                <th scope="col">#</th>
+                <th scope="col">Vence</th>
+                <th scope="col" class="text-right">Importe</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (c of calendario(); track c.numero) {
+                <tr class="tabular-nums [&>td]:border-b [&>td]:py-2.25 last:[&>td]:border-b-0">
+                  <td class="text-muted-foreground">{{ c.numero }}</td>
+                  <td>{{ c.fecha }}</td>
+                  <td class="text-right font-bold">{{ c.importe }}</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+          <p class="text-muted-foreground mt-2 text-xs">{{ notaUltimoPago() }}</p>
+        } @else {
+          <p class="text-muted-foreground mt-2 text-sm" [attr.aria-busy]="simulacion.isLoading()">
+            {{
+              simulacion.isLoading()
+                ? 'Calculando el plan…'
+                : 'Elige préstamos y define el plan para ver las fechas y los importes.'
+            }}
+          </p>
+        }
+      </div>
+
+      <p
+        class="bg-primary-soft text-primary-ink flex items-start gap-2.5 rounded-lg px-3 py-2.5 text-[12.5px] leading-normal font-semibold"
+        role="note"
+      >
+        <app-icono nombre="info" class="mt-px size-4" />
+        <span
+          >Los préstamos incluidos pasan al estado <strong>En convenio</strong>: dejan de cobrarse
+          en Cobranza y lo que deben se paga con este calendario. Lo ya abonado se conserva.</span
+        >
+      </p>
+
+      <div class="flex flex-col gap-2.5">
+        <button
+          type="button"
+          class="btn-primario min-h-13 w-full text-[15px]"
+          (click)="intentarGenerar()"
+        >
+          <app-icono nombre="palomita" />
+          Generar convenio
+        </button>
+        <button
+          type="button"
+          class="btn-secundario min-h-13 w-full text-[15px]"
+          (click)="imprimirConvenio()"
+        >
+          <app-icono nombre="imprimir" />
+          Imprimir convenio
+        </button>
+        <p class="text-muted-foreground text-center text-xs">
+          Hoja para el cliente con el pago por cuota, los préstamos y el calendario.
+        </p>
+      </div>
+    </div>
+  </aside>
+</div>
+
+<app-hoja-simulacion [simulacion]="hoja()" />
+
+@if (confirmando()) {
+  <dialog
+    appDialogoModal
+    aria-labelledby="t-confirmar"
+    class="bg-card text-foreground backdrop:bg-overlay mx-0 mt-auto mb-0 w-full max-w-none rounded-t-3xl border border-b-0 p-0 shadow-2xl sm:m-auto sm:max-w-120 sm:rounded-2xl sm:border-b"
+    (cerrar)="cerrarConfirmacion()"
+  >
+    <div class="px-6 pt-6 pb-2">
+      <h2 id="t-confirmar" class="text-xl font-extrabold">¿Generar convenio?</h2>
+      <p class="text-muted-foreground mt-1.5 text-sm">
+        Los {{ elegidos().length }} préstamos de abajo pasarán a En convenio y se generará un
+        calendario nuevo a nombre de {{ titular()?.nombreCompleto }}.
+      </p>
+    </div>
+    <ul class="flex flex-col gap-1.5 px-6 pt-3">
+      @for (e of elegidos(); track e.id) {
+        <li class="flex items-center gap-2.5 rounded-lg border px-3 py-2 text-[13px]">
+          <span class="min-w-0 flex-1 truncate font-semibold">#{{ e.id }} · {{ e.cliente }}</span>
+          <span class="font-bold tabular-nums">{{ e.saldo }}</span>
+        </li>
+      }
+    </ul>
+    <dl class="flex flex-col gap-2.5 px-6 py-4 text-sm">
+      <div class="flex items-baseline justify-between gap-3">
+        <dt class="text-muted-foreground">Saldo a convenir</dt>
+        <dd class="text-right font-bold tabular-nums">{{ resumen().saldo }}</dd>
+      </div>
+      <div class="flex items-baseline justify-between gap-3">
+        <dt class="text-muted-foreground">Interés</dt>
+        <dd class="text-right font-bold tabular-nums">{{ resumen().interes }}</dd>
+      </div>
+      <div class="flex items-baseline justify-between gap-3">
+        <dt class="text-muted-foreground">Pagos</dt>
+        <dd class="text-right font-bold tabular-nums">{{ resumen().detalleCorto }}</dd>
+      </div>
+      <div class="flex items-baseline justify-between gap-3">
+        <dt class="text-muted-foreground">Primer pago</dt>
+        <dd class="text-right font-bold">{{ primerPago() }}</dd>
+      </div>
+      <div class="flex items-baseline justify-between gap-3 border-t pt-2.5 text-base">
+        <dt class="font-bold">Total del convenio</dt>
+        <dd class="text-right font-extrabold tabular-nums">{{ resumen().total }}</dd>
+      </div>
+    </dl>
+    @if (errorApi()) {
+      <p
+        role="alert"
+        class="bg-destructive-soft text-destructive mx-6 mb-2 rounded-lg px-3.5 py-2.5 text-sm font-semibold"
+      >
+        {{ errorApi() }}
+      </p>
+    }
+    <div class="flex flex-col-reverse gap-3 border-t px-6 pt-4 pb-6 sm:flex-row sm:justify-end">
+      <button
+        type="button"
+        class="btn-secundario"
+        [disabled]="enviando()"
+        (click)="cerrarConfirmacion()"
+      >
+        Cancelar
+      </button>
+      <button type="button" class="btn-primario" [disabled]="enviando()" (click)="generar()">
+        {{ enviando() ? 'Generando…' : 'Generar convenio' }}
+      </button>
+    </div>
+  </dialog>
+}
+
+@if (resultado(); as r) {
+  <dialog
+    appDialogoModal
+    aria-labelledby="t-generado"
+    class="bg-card text-foreground backdrop:bg-overlay mx-0 mt-auto mb-0 w-full max-w-none rounded-t-3xl border border-b-0 p-0 text-center shadow-2xl sm:m-auto sm:max-w-120 sm:rounded-2xl sm:border-b"
+    (cerrar)="cerrarResultado()"
+  >
+    <div class="flex flex-col items-center gap-3 px-6 pt-7 pb-2">
+      <span
+        class="bg-ok-soft text-ok inline-flex size-12 items-center justify-center rounded-[14px]"
+      >
+        <app-icono nombre="palomita" class="size-6.5" />
+      </span>
+      <h2 id="t-generado" class="text-xl font-extrabold">Convenio {{ r.folio }} generado</h2>
+      <p class="text-muted-foreground text-sm leading-normal">
+        Se generó el préstamo #{{ r.idPrestamoConvenio }} con {{ r.plan.numeroPagos }} pagos a
+        nombre de {{ r.titular.nombreCompleto }}. Los {{ r.plan.prestamos.length }} préstamos
+        incluidos quedaron En convenio.
+      </p>
+    </div>
+    <div class="flex flex-col-reverse gap-3 px-6 pt-4 pb-6 sm:flex-row sm:justify-center">
+      <a routerLink="/convenios" class="btn-secundario">Ver convenios</a>
+      <button type="button" class="btn-primario" (click)="nuevoConvenio()">
+        Hacer otro convenio
+      </button>
+    </div>
+  </dialog>
+}

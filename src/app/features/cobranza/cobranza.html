@@ -295,6 +295,7 @@
               <th scope="col">Método</th>
               <th scope="col">Hora</th>
               <th scope="col" class="text-right">Importe</th>
+              <th scope="col"><span class="sr-only">Recibo</span></th>
             </tr>
           </thead>
           <tbody>
@@ -311,6 +312,18 @@
                 <td>{{ o.metodo }}</td>
                 <td class="tabular-nums">{{ o.hora }}</td>
                 <td class="text-right font-extrabold tabular-nums">{{ o.importe }}</td>
+                <td class="text-right">
+                  <button
+                    type="button"
+                    class="btn-secundario"
+                    [attr.aria-label]="'Reimprimir recibo ' + o.folio"
+                    [disabled]="reimprimiendo() !== ''"
+                    (click)="reimprimir(o.folio)"
+                  >
+                    <app-icono nombre="imprimir" class="size-4" />
+                    {{ reimprimiendo() === o.folio ? 'Cargando…' : 'Reimprimir' }}
+                  </button>
+                </td>
               </tr>
             }
           </tbody>

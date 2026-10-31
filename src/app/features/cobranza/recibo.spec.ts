@@ -3,6 +3,7 @@ import {
   nombreArchivo,
   rangoPagos,
   reciboDeLiquidacion,
+  reciboDeOperacion,
   reciboDePago,
 } from '@/features/cobranza/recibo';
 
@@ -151,5 +152,33 @@ describe('reciboDeLiquidacion', () => {
   it('avisa si el cliente tiene otro préstamo con saldo', () => {
     const recibo = reciboDeLiquidacion({ ...LIQUIDACION, clienteSinAdeudos: false }, SALDO);
     expect(recibo.nota).toBe('El cliente todavía tiene otro préstamo con saldo.');
+  });
+});
+
+describe('reciboDeOperacion (reimpresión)', () => {
+  it('un pago se reimprime igual que al cobrarlo', () => {
+    const original = reciboDePago(pago());
+    const copia = reciboDeOperacion({
+      tipo: 'CUOTA_COMPLETA',
+      modalidad: SALDO.modalidad,
+      totalCuotas: 8,
+      pago: pago(),
+      liquidacion: null,
+    });
+    expect(copia).toEqual(original);
+  });
+
+  it('una liquidación usa la modalidad y el total del préstamo, sin la nota del momento del cobro', () => {
+    const copia = reciboDeOperacion({
+      tipo: 'LIQUIDACION',
+      modalidad: SALDO.modalidad,
+      totalCuotas: SALDO.totalCuotas,
+      pago: null,
+      liquidacion: { ...LIQUIDACION, clienteSinAdeudos: null },
+    });
+    expect(copia.filas.map((f) => f.valor)).toContain('Pagos 7 a 8 de 8');
+    expect(copia.saldo).toBe('Préstamo liquidado');
+    expect(copia.nota).toBe('');
+    expect(copia.archivo).toBe('PAGO_JOSE_ANTONIO_HERNANDEZ_CRUZ_RECIBO_7_a_8_de_8.png');
   });
 });

@@ -27,7 +27,7 @@ import {
   DIAS_PROXIMOS,
 } from '@/features/cobranza/cobranza.service';
 import { CobroDialogo } from '@/features/cobranza/cobro-dialogo';
-import type { Recibo } from '@/features/cobranza/recibo';
+import { type Recibo, reciboDeOperacion } from '@/features/cobranza/recibo';
 import { ReciboDialogo } from '@/features/cobranza/recibo-dialogo';
 
 const POR_PAGINA = 10;
@@ -127,6 +127,10 @@ export class Cobranza {
   protected readonly busqueda = signal('');
   protected readonly enCobro = signal<CuotaCobranza | undefined>(undefined);
   protected readonly recibo = signal<Recibo | undefined>(undefined);
+  /** El recibo abierto es una reimpresión (al cerrarlo no se avisa de un pago nuevo). */
+  private reimpresion = false;
+  /** Folio cuyo recibo se está consultando para reimprimir. */
+  protected readonly reimprimiendo = signal('');
   private readonly busquedaConsulta = conRetraso(this.busqueda);
 
   protected readonly resumen = this.servicio.resumen();
@@ -280,12 +284,28 @@ export class Cobranza {
 
   protected alRegistrar(recibo: Recibo): void {
     this.enCobro.set(undefined);
+    this.reimpresion = false;
     this.recibo.set(recibo);
     this.recargar();
   }
 
+  /** Abre el mismo recibo que se entregó al cobrar, para descargarlo otra vez. */
+  protected async reimprimir(folio: string): Promise<void> {
+    if (this.reimprimiendo()) return;
+    this.reimprimiendo.set(folio);
+    try {
+      const recibo = reciboDeOperacion(await this.servicio.recibo(folio));
+      this.reimpresion = true;
+      this.recibo.set(recibo);
+    } catch (error) {
+      this.avisos.error(mensajeDeError(error, 'No se pudo cargar el recibo. Intenta de nuevo.'));
+    } finally {
+      this.reimprimiendo.set('');
+    }
+  }
+
   protected cerrarRecibo(): void {
     this.recibo.set(undefined);
-    this.avisos.mostrar('Pago guardado. Aparece en "Cobrado hoy".');
+    if (!this.reimpresion) this.avisos.mostrar('Pago guardado. Aparece en "Cobrado hoy".');
   }
 }

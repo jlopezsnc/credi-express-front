@@ -1,0 +1,359 @@
+@if (cargandoInicial()) {
+  <div class="tarjeta text-muted-foreground px-6 py-12 text-center text-sm" aria-busy="true">
+    Cargando el resumen…
+  </div>
+} @else if (error() && !recurso.hasValue()) {
+  <div role="alert" class="tarjeta px-6 py-12 text-center">
+    <p class="text-base font-bold">No se pudo cargar el resumen</p>
+    <p class="text-muted-foreground mt-1.5 text-sm">{{ error() }}</p>
+    <button type="button" class="btn-secundario mt-4" (click)="recurso.reload()">Reintentar</button>
+  </div>
+} @else if (vista(); as v) {
+  <header class="flex flex-wrap items-end justify-between gap-4">
+    <div>
+      <p class="text-muted-foreground mb-1.5 text-[13px] font-semibold">{{ v.hoy }}</p>
+      <h1 class="text-[26px] font-extrabold tracking-tight lg:text-[32px]">
+        {{ saludo }}{{ nombre() ? ', ' + nombre() : '' }}
+      </h1>
+      <p class="text-muted-foreground mt-1.5 text-sm">
+        Así va el mes. Elige otro mes para compararlo con el anterior.
+      </p>
+    </div>
+    <div class="flex flex-col items-start gap-1.5 sm:items-end">
+      <div
+        class="bg-card inline-flex items-center gap-1 rounded-xl border p-1"
+        role="group"
+        aria-label="Mes del resumen"
+      >
+        <button
+          type="button"
+          class="btn-icono size-10 border-0"
+          aria-label="Mes anterior"
+          [disabled]="recurso.isLoading()"
+          (click)="cambiarMes(-1)"
+        >
+          <app-icono nombre="anterior" />
+        </button>
+        <span class="min-w-38 text-center text-[15px] font-extrabold" aria-live="polite">
+          {{ v.etiqueta }}
+        </span>
+        <button
+          type="button"
+          class="btn-icono size-10 border-0 disabled:cursor-not-allowed disabled:opacity-35"
+          aria-label="Mes siguiente"
+          [disabled]="!puedeAvanzar() || recurso.isLoading()"
+          (click)="cambiarMes(1)"
+        >
+          <app-icono nombre="siguiente" />
+        </button>
+      </div>
+      @if (v.enCurso) {
+        <span class="bg-aviso-soft text-aviso rounded-full px-2.5 py-0.5 text-xs font-bold">
+          Mes en curso · cifras al {{ v.corte }}
+        </span>
+      }
+    </div>
+  </header>
+
+  @if (error(); as mensaje) {
+    <div
+      role="alert"
+      class="bg-destructive-soft text-destructive flex flex-wrap items-center justify-between gap-3 rounded-lg px-4 py-3 text-sm font-semibold"
+    >
+      {{ mensaje }}
+      <button type="button" class="btn-secundario min-h-9" (click)="recurso.reload()">
+        Reintentar
+      </button>
+    </div>
+  }
+
+  <h2 class="-mb-2 text-xl font-extrabold">Resumen de {{ v.nombreMes }}</h2>
+  <section
+    class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4"
+    aria-label="Resumen del mes"
+    [attr.aria-busy]="recurso.isLoading()"
+  >
+    <article class="tarjeta flex min-w-0 flex-col gap-1.5 px-5 py-4.5">
+      <p class="text-muted-foreground text-[13px] font-bold">Cobrado en el mes</p>
+      <p class="truncate text-[26px] font-extrabold tracking-tight tabular-nums">
+        {{ v.cobrado }}
+      </p>
+      <span
+        class="self-start rounded-full px-2 py-0.5 text-xs font-bold"
+        [class]="v.cobradoVariacion.clase"
+        >{{ v.cobradoVariacion.texto }}</span
+      >
+      <p class="text-muted-foreground text-[13px] leading-snug">{{ v.cobradoDetalle }}</p>
+    </article>
+    <article class="tarjeta flex min-w-0 flex-col gap-1.5 px-5 py-4.5">
+      <p class="text-muted-foreground text-[13px] font-bold">Cumplimiento de cobranza</p>
+      <p class="truncate text-[26px] font-extrabold tracking-tight tabular-nums">
+        {{ v.cumplimiento }}
+      </p>
+      <svg
+        class="bg-muted block h-2 w-full overflow-hidden rounded-full border"
+        viewBox="0 0 100 8"
+        preserveAspectRatio="none"
+        role="img"
+        [attr.aria-label]="'Cumplimiento ' + v.cumplimiento"
+      >
+        <rect
+          x="0"
+          y="0"
+          height="8"
+          rx="4"
+          class="fill-grafica"
+          [attr.width]="v.cumplimientoAncho"
+        />
+      </svg>
+      <p class="text-muted-foreground text-[13px] leading-snug">{{ v.cumplimientoDetalle }}</p>
+    </article>
+    <article class="tarjeta flex min-w-0 flex-col gap-1.5 px-5 py-4.5">
+      <p class="text-muted-foreground text-[13px] font-bold">Préstamos otorgados</p>
+      <p class="truncate text-[26px] font-extrabold tracking-tight tabular-nums">
+        {{ v.otorgados }}
+      </p>
+      <span
+        class="self-start rounded-full px-2 py-0.5 text-xs font-bold"
+        [class]="v.otorgadosVariacion.clase"
+        >{{ v.otorgadosVariacion.texto }}</span
+      >
+      <p class="text-muted-foreground text-[13px] leading-snug">{{ v.otorgadosDetalle }}</p>
+    </article>
+    <article class="tarjeta flex min-w-0 flex-col gap-1.5 px-5 py-4.5">
+      <p class="text-muted-foreground text-[13px] font-bold">Convenios generados</p>
+      <p class="truncate text-[26px] font-extrabold tracking-tight tabular-nums">
+        {{ v.convenios }}
+      </p>
+      <span
+        class="self-start rounded-full px-2 py-0.5 text-xs font-bold"
+        [class]="v.conveniosVariacion.clase"
+        >{{ v.conveniosVariacion.texto }}</span
+      >
+      <p class="text-muted-foreground text-[13px] leading-snug">{{ v.conveniosDetalle }}</p>
+    </article>
+  </section>
+
+  <section class="tarjeta flex flex-col gap-3.5 px-5 py-5" aria-labelledby="t-grafica">
+    <div class="flex flex-wrap items-start justify-between gap-3">
+      <div>
+        <h2 id="t-grafica" class="text-base font-extrabold">Aplicado contra esperado por semana</h2>
+        <p class="text-muted-foreground mt-1 text-[13px]">
+          Esperado = lo que vencía esa semana. Pasa el cursor sobre una semana para ver el detalle.
+        </p>
+      </div>
+      <button
+        type="button"
+        class="text-primary-ink hover:text-foreground min-h-9 cursor-pointer px-1 text-[13px] font-bold"
+        [attr.aria-pressed]="verTabla()"
+        (click)="verTabla.set(!verTabla()); semanaActiva.set(undefined)"
+      >
+        {{ verTabla() ? 'Ver como gráfica' : 'Ver como tabla' }}
+      </button>
+    </div>
+    <div
+      class="text-muted-foreground flex flex-wrap gap-4 text-[13px] font-semibold"
+      aria-hidden="true"
+    >
+      <span class="inline-flex items-center gap-2"
+        ><i class="bg-grafica-2 inline-block size-3 rounded-[3px]"></i>Esperado</span
+      >
+      <span class="inline-flex items-center gap-2"
+        ><i class="bg-grafica inline-block size-3 rounded-[3px]"></i>Aplicado</span
+      >
+    </div>
+
+    @if (verTabla()) {
+      <div class="overflow-x-auto">
+        <table class="w-full border-collapse text-[13px]">
+          <thead>
+            <tr
+              class="text-muted-foreground text-left text-[11px] font-bold tracking-wider uppercase [&>th]:border-b [&>th]:px-2 [&>th]:py-2"
+            >
+              <th scope="col">Semana</th>
+              <th scope="col" class="text-right">Esperado</th>
+              <th scope="col" class="text-right">Aplicado</th>
+              <th scope="col" class="text-right">Cumplimiento</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (s of v.semanas; track s.titulo) {
+              <tr
+                class="tabular-nums [&>td]:border-b [&>td]:px-2 [&>td]:py-2 last:[&>td]:border-b-0"
+              >
+                <td>{{ s.titulo }}</td>
+                <td class="text-right">{{ s.esperado }}</td>
+                <td class="text-right font-bold">{{ s.aplicado }}</td>
+                <td class="text-right">{{ s.cumplimiento }}</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    } @else {
+      <div class="relative">
+        <svg
+          class="block h-auto w-full overflow-visible"
+          role="img"
+          [attr.viewBox]="'0 0 ' + lienzo.ancho + ' ' + lienzo.alto"
+          [attr.aria-label]="v.graficaAria"
+        >
+          @for (t of v.grafica.ticks; track t.texto) {
+            <line
+              [attr.x1]="lienzo.izquierda"
+              [attr.x2]="lienzo.ancho - lienzo.derecha"
+              [attr.y1]="t.y"
+              [attr.y2]="t.y"
+              class="stroke-border"
+              stroke-width="1"
+            />
+            <text
+              [attr.x]="lienzo.izquierda - 8"
+              [attr.y]="t.y + 4"
+              text-anchor="end"
+              class="fill-muted-foreground text-[11px]"
+            >
+              {{ t.texto }}
+            </text>
+          }
+          @for (g of v.grafica.grupos; track g.etiqueta; let i = $index) {
+            <g (mouseenter)="semanaActiva.set(i)" (mouseleave)="semanaActiva.set(undefined)">
+              <rect
+                [attr.x]="g.zona.x"
+                [attr.y]="lienzo.arriba"
+                [attr.width]="g.zona.ancho"
+                [attr.height]="lienzo.alto - lienzo.arriba - lienzo.abajo"
+                fill="transparent"
+              />
+              @if (g.esperado) {
+                <path [attr.d]="g.esperado" class="fill-grafica-2" />
+              }
+              @if (g.aplicado) {
+                <path [attr.d]="g.aplicado" class="fill-grafica" />
+              }
+              <text
+                [attr.x]="g.centro"
+                [attr.y]="lienzo.alto - 8"
+                text-anchor="middle"
+                class="fill-muted-foreground text-[11px]"
+              >
+                {{ g.etiqueta }}
+              </text>
+            </g>
+          }
+        </svg>
+        @if (globo(); as w) {
+          <!-- Una columna por semana sobre el área de las barras: el globo va en la de su semana. -->
+          <div
+            class="pointer-events-none absolute inset-y-0 right-[1.25%] left-[8.125%] grid"
+            [class]="w.columnas"
+          >
+            <div
+              class="bg-card shadow-tarjeta z-10 mt-2 min-w-48 self-start justify-self-center rounded-lg border px-3 py-2.5 text-[12.5px]"
+              role="status"
+              [class]="w.columna"
+            >
+              <p class="mb-1.5 font-extrabold">{{ w.titulo }}</p>
+              <dl class="flex flex-col gap-1">
+                <div class="flex justify-between gap-3">
+                  <dt class="text-muted-foreground inline-flex items-center gap-1.5">
+                    <i class="bg-grafica-2 inline-block size-3 rounded-[3px]"></i>Esperado
+                  </dt>
+                  <dd class="font-bold tabular-nums">{{ w.esperado }}</dd>
+                </div>
+                <div class="flex justify-between gap-3">
+                  <dt class="text-muted-foreground inline-flex items-center gap-1.5">
+                    <i class="bg-grafica inline-block size-3 rounded-[3px]"></i>Aplicado
+                  </dt>
+                  <dd class="font-bold tabular-nums">{{ w.aplicado }}</dd>
+                </div>
+                <div class="mt-1 flex justify-between gap-3 border-t pt-1.5">
+                  <dt class="text-muted-foreground">Cumplimiento</dt>
+                  <dd class="font-bold tabular-nums">{{ w.cumplimiento }}</dd>
+                </div>
+              </dl>
+            </div>
+          </div>
+        }
+      </div>
+    }
+  </section>
+
+  <section class="flex flex-col gap-3.5" aria-labelledby="t-hoy">
+    <div>
+      <h2 id="t-hoy" class="text-xl font-extrabold">Al día de hoy</h2>
+      <p class="text-muted-foreground mt-1 text-[13px]">
+        Cómo está la cartera ahora mismo; no cambia con el mes elegido.
+      </p>
+    </div>
+    <div class="grid grid-cols-1 gap-4 md:grid-cols-3">
+      <article class="tarjeta flex min-w-0 flex-col gap-1.5 px-5 py-4.5">
+        <p class="text-muted-foreground text-[13px] font-bold">Cartera por cobrar</p>
+        <p class="truncate text-[26px] font-extrabold tracking-tight tabular-nums">
+          {{ v.cartera }}
+        </p>
+        <p class="text-muted-foreground text-[13px]">{{ v.prestamosActivos }}</p>
+      </article>
+      <article class="tarjeta flex min-w-0 flex-col gap-1.5 px-5 py-4.5">
+        <p class="text-muted-foreground text-[13px] font-bold">Vencido</p>
+        <p class="text-atraso truncate text-[26px] font-extrabold tracking-tight tabular-nums">
+          {{ v.vencido }}
+        </p>
+        <p class="text-muted-foreground text-[13px]">{{ v.vencidoDetalle }}</p>
+      </article>
+      <article class="tarjeta flex min-w-0 flex-col gap-1.5 px-5 py-4.5">
+        <p class="text-muted-foreground text-[13px] font-bold">Vence en los próximos 7 días</p>
+        <p class="truncate text-[26px] font-extrabold tracking-tight tabular-nums">
+          {{ v.proximos }}
+        </p>
+        <p class="text-muted-foreground text-[13px]">{{ v.proximosDetalle }}</p>
+      </article>
+    </div>
+
+    <section class="tarjeta flex flex-col gap-3 px-5 py-5" aria-labelledby="t-atencion">
+      <div class="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h3 id="t-atencion" class="text-base font-extrabold">Requieren atención</h3>
+          <p class="text-muted-foreground mt-1 text-[13px]">Los clientes con más atraso.</p>
+        </div>
+        <a routerLink="/cobranza" class="btn-secundario">
+          <app-icono nombre="cobranza" />
+          Ir a Cobranza
+        </a>
+      </div>
+      <ul aria-label="Clientes con más atraso">
+        @for (c of v.atencion; track c.id) {
+          <li class="flex items-center gap-3 border-b py-2.5 last:border-b-0">
+            <span
+              class="inline-flex size-9.5 shrink-0 items-center justify-center rounded-full text-[13px] font-extrabold"
+              [class]="c.avatar"
+              aria-hidden="true"
+            >
+              {{ c.iniciales }}
+            </span>
+            <span class="min-w-0 flex-1">
+              <span class="block truncate text-sm font-bold">{{ c.nombre }}</span>
+              <span class="text-muted-foreground block text-xs">{{ c.detalle }}</span>
+            </span>
+            <span class="font-extrabold whitespace-nowrap tabular-nums">{{ c.vencido }}</span>
+          </li>
+        } @empty {
+          <li class="text-muted-foreground py-3 text-sm">Nadie tiene atraso.</li>
+        }
+      </ul>
+    </section>
+  </section>
+
+  <section class="flex flex-col gap-2.5" aria-labelledby="t-accesos">
+    <h2 id="t-accesos" class="text-[15px] font-extrabold">Accesos rápidos</h2>
+    <div class="flex flex-wrap gap-2.5">
+      <a routerLink="/prestamos/nuevo" class="btn-primario">
+        <app-icono nombre="mas" />
+        Nuevo préstamo
+      </a>
+      <a routerLink="/cobranza" class="btn-secundario">Registrar un pago</a>
+      <a routerLink="/convenios/nuevo" class="btn-secundario">Nuevo convenio</a>
+      <a routerLink="/reportes" class="btn-secundario">Ver reportes</a>
+    </div>
+  </section>
+}

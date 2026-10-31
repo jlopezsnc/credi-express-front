@@ -36,6 +36,17 @@ export const routes: Routes = [
           import('@/features/prestamos/nuevo-prestamo').then((m) => m.NuevoPrestamo),
       },
       {
+        path: 'convenios',
+        title: 'Convenios · Credi Express',
+        loadComponent: () => import('@/features/convenios/convenios').then((m) => m.Convenios),
+      },
+      {
+        path: 'convenios/nuevo',
+        title: 'Nuevo convenio · Credi Express',
+        loadComponent: () =>
+          import('@/features/convenios/nuevo-convenio').then((m) => m.NuevoConvenio),
+      },
+      {
         path: 'cobranza',
         title: 'Cobranza · Credi Express',
         loadComponent: () => import('@/features/cobranza/cobranza').then((m) => m.Cobranza),

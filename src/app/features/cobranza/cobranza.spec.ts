@@ -6,6 +6,7 @@ import {
 } from '@angular/common/http/testing';
 import { type ComponentFixture, TestBed } from '@angular/core/testing';
 import { errorInterceptor } from '@/core/api/error.interceptor';
+import { AvisosService } from '@/core/ui/avisos.service';
 import { Cobranza } from '@/features/cobranza/cobranza';
 import type {
   CuotaCobranza,
@@ -13,6 +14,7 @@ import type {
   OperacionPago,
   Pago,
   PaginaConTotal,
+  ReciboOperacion,
   ResumenCobranza,
   SaldoPrestamo,
   SituacionCuota,
@@ -510,5 +512,101 @@ describe('Cobranza', () => {
     expect(filas[0]?.textContent).toContain('Liquidación');
     expect(filas[0]?.textContent).toContain('$1,970.00 MXN');
     expect(pantalla.textContent).toContain('1 pago · $1,970.00 MXN cobrados hoy');
+
+    // Reimprimir: el mismo diálogo del cobro, con los datos que guarda el back.
+    const avisos = TestBed.inject(AvisosService);
+    const mostrar = vi.spyOn(avisos, 'mostrar');
+    boton('Reimprimir recibo P-000240').click();
+    await esperar();
+    const recibo: ReciboOperacion = {
+      tipo: 'LIQUIDACION',
+      modalidad: QUINCENAL,
+      totalCuotas: 8,
+      pago: null,
+      liquidacion: {
+        folio: 'P-000240',
+        idPrestamo: 12,
+        cliente: MARIA,
+        cuotasLiquidadas: 2,
+        importe: '1820.00',
+        recargo: '150.00',
+        totalRecibido: '1970.00',
+        fechaPago: '2026-10-29',
+        metodoPago: 'TRANSFERENCIA',
+        referencia: '998877',
+        nota: null,
+        pagos: [
+          { idPago: 240, idCuota: 101, numeroCuota: 7, importe: '710.00' },
+          { idPago: 241, idCuota: 102, numeroCuota: 8, importe: '1110.00' },
+        ],
+        prestamoLiquidado: true,
+        clienteSinAdeudos: null,
+        registradoPor: 'cobrador@ejemplo.com',
+        fechaRegistro: '2026-10-29T11:02:00-06:00',
+      },
+    };
+    http.expectOne(`${BASE}/recibo/P-000240`).flush(sobre(recibo));
+    await esperar();
+
+    expect(dialogo().textContent).toContain('Préstamo liquidado');
+    expect(dialogo().textContent).toContain('P-000240');
+    expect(dialogo().textContent).not.toContain('adeudos');
+    boton('Crear recibo').click();
+    await esperar();
+    expect(png.descargar).toHaveBeenCalledWith(
+      'blob:recibo',
+      'PAGO_MARIA_FERNANDA_LOPEZ_RUIZ_RECIBO_7_a_8_de_8.png',
+    );
+    boton('Listo').click();
+    await esperar();
+    expect(pantalla.querySelector('dialog')).toBeNull();
+    expect(mostrar).not.toHaveBeenCalled();
+  });
+
+  it('si no se puede cargar el recibo avisa el error y no abre el diálogo', async () => {
+    await responderCarga('HOY', [DE_HOY], {
+      ...RESUMEN,
+      cobrado: { pagos: 1, importe: '710.00' },
+    });
+    boton('Cobrado hoy 1').click();
+    await esperar();
+    const operacion: OperacionPago = {
+      folio: 'P-000233',
+      fechaRegistro: '2026-10-29T10:15:00-06:00',
+      fechaPago: '2026-10-29',
+      cliente: MARIA,
+      idPrestamo: 12,
+      cuotaInicial: 7,
+      cuotaFinal: 7,
+      totalCuotas: 8,
+      tipo: 'CUOTA_COMPLETA',
+      metodoPago: 'EFECTIVO',
+      referencia: null,
+      importe: '710.00',
+      recargo: '0.00',
+      totalRecibido: '710.00',
+      registradoPor: 'cobrador@ejemplo.com',
+      estatus: 'VIGENTE',
+    };
+    http
+      .expectOne((r) => r.url === `${BASE}/operaciones`)
+      .flush(sobre(pagina([operacion], '710.00')));
+    await esperar();
+    const error = vi.spyOn(TestBed.inject(AvisosService), 'error');
+
+    boton('Reimprimir recibo P-000233').click();
+    await esperar();
+    http.expectOne(`${BASE}/recibo/P-000233`).flush(
+      {
+        objetoResponse: null,
+        httpStatus: 'NOT_FOUND',
+        mensaje: 'No hay un pago vigente con ese folio.',
+      },
+      { status: 404, statusText: 'Not Found' },
+    );
+    await esperar();
+
+    expect(error).toHaveBeenCalledWith('No hay un pago vigente con ese folio.');
+    expect(pantalla.querySelector('dialog')).toBeNull();
   });
 });

@@ -45,6 +45,8 @@
   --aviso-soft: #fef4dc;
   /* Barras de las gráficas (validadas contra la superficie con la guía de visualización) */
   --grafica: #0d9488;
+  /* Segunda serie (lo esperado en Inicio); el par con --grafica pasa el validador de daltonismo. */
+  --grafica-2: #7b8bd4;
   --neutro: #485756;
   --neutro-soft: #ebefef;
   /* Avatares */
@@ -89,6 +91,7 @@
   --aviso: #fcd34d;
   --aviso-soft: #3a2e0c;
   --grafica: #1fa898;
+  --grafica-2: #7a8ae0;
   --neutro: #a9b8b6;
   --neutro-soft: #1b2828;
   --av0: #123532;
@@ -140,6 +143,7 @@
   --color-aviso: var(--aviso);
   --color-aviso-soft: var(--aviso-soft);
   --color-grafica: var(--grafica);
+  --color-grafica-2: var(--grafica-2);
   --color-neutro: var(--neutro);
   --color-neutro-soft: var(--neutro-soft);
   --color-av0: var(--av0);

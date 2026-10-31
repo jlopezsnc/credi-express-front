@@ -469,6 +469,23 @@ llenos; `"mensaje": "Pago cancelado."`
 
 No debe existir `DELETE`.
 
+### 3.5.1 `GET /recibo/{folio}` (2026-10-30)
+
+Reimprimir el recibo de una operación ya cobrada (botón "Reimprimir" en "Cobrado hoy"). Responde lo
+mismo que se respondió al cobrar, para que el front arme el recibo con la misma función y el mismo
+diálogo:
+
+- `tipo`: `CUOTA_COMPLETA`, `ABONO_PARCIAL` o `LIQUIDACION`.
+- `modalidad` y `totalCuotas` del préstamo.
+- `pago` (objeto `Pago`, §2.3) en un pago o abono; `liquidacion` (como en §3.7) en una
+  liquidación. El otro va en `null`.
+
+En la liquidación, `clienteSinAdeudos` va en `null`: era la situación al momento de cobrar, no se
+guarda y hoy puede ser otra, así que el recibo reimpreso no lleva esa nota. Todo lo demás (saldo de
+la cuota, préstamo liquidado, importes, fecha y hora del registro) sale de lo guardado en `pago`.
+
+**404** `"No hay un pago vigente con ese folio."` si no existe o se canceló.
+
 ### 3.6 `GET /prestamo-saldo/{idPrestamo}`
 
 Datos para el diálogo "Liquidar préstamo": cuánto debe en total y qué cuotas se van a liquidar.
@@ -817,6 +834,7 @@ Diferencias con lo propuesto arriba:
 | Diálogo "Registrar pago"     | Lo mismo de la fila; importe inicial = `saldoCuota`; tope = `saldoCuota`   |
 | Recibo                       | `folio`, `cliente.nombreCompleto`, `idPrestamo`, `numeroCuota`/`totalCuotas`, `metodoPago` + `referencia`, `fechaPago`, `importe`, `saldoCuota` / `cuotaLiquidada` |
 | Pestaña "Cobrado hoy"        | `folio`, `cliente.nombreCompleto`, `numeroCuota`/`totalCuotas`, `idPrestamo`, `tipo`, `metodoPago`, hora de `fechaRegistro`, `importe` |
+| "Reimprimir" (Cobrado hoy)   | `GET /recibo/{folio}` → el mismo diálogo y PNG del cobro                   |
 | Errores                      | `mensaje` tal cual; `campos` se pinta bajo cada campo del diálogo         |
 
 Después de registrar un pago, el front vuelve a pedir `resumen`, las tres pestañas de cuotas y `pagos`.

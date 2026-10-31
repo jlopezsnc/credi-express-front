@@ -24,6 +24,7 @@ const SECCIONES: readonly Seccion[] = [
   { ruta: '/', etiqueta: 'Inicio', icono: 'inicio' },
   { ruta: '/clientes', etiqueta: 'Clientes', icono: 'clientes' },
   { ruta: '/prestamos', etiqueta: 'Préstamos', icono: 'prestamos' },
+  { ruta: '/convenios', etiqueta: 'Convenios', icono: 'convenio' },
   { ruta: '/cobranza', etiqueta: 'Cobranza', icono: 'cobranza' },
   { ruta: '/reportes', etiqueta: 'Reportes', icono: 'reportes' },
 ];

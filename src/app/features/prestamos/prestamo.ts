@@ -5,11 +5,26 @@
  */
 import type { ClienteResumen, ModalidadResumen } from '@/features/cobranza/cobranza-api';
 
-export type SituacionPrestamo = 'AL_CORRIENTE' | 'CON_ATRASO' | 'LIQUIDADO';
-export type EstatusCuota = 'PAGADA' | 'VENCIDA' | 'ABONO_PARCIAL' | 'PENDIENTE';
-export type FiltroPrestamos = 'ACTIVOS' | 'CON_ATRASO' | 'LIQUIDADOS' | 'TODOS';
+/**
+ * `EN_CONVENIO`: su saldo pasó a un convenio; `CANCELADO`: préstamo de un convenio cancelado
+ * (docs/API-CONVENIOS.md). En los dos su saldo es 0.
+ */
+export type SituacionPrestamo =
+  'AL_CORRIENTE' | 'CON_ATRASO' | 'LIQUIDADO' | 'EN_CONVENIO' | 'CANCELADO';
+export type EstatusCuota =
+  'PAGADA' | 'VENCIDA' | 'ABONO_PARCIAL' | 'PENDIENTE' | 'EN_CONVENIO' | 'CANCELADA';
+export type FiltroPrestamos =
+  'ACTIVOS' | 'AL_CORRIENTE' | 'CON_ATRASO' | 'LIQUIDADOS' | 'EN_CONVENIO' | 'CANCELADOS' | 'TODOS';
 export type OrdenPrestamos =
-  'CLIENTE' | 'PAGOS' | 'CUOTA' | 'TOTAL' | 'SALDO' | 'PROXIMO_PAGO' | 'ESTADO';
+  | 'CLIENTE'
+  | 'PRESTAMO'
+  | 'PAGOS'
+  | 'VENCIDAS'
+  | 'CUOTA'
+  | 'TOTAL'
+  | 'SALDO'
+  | 'PROXIMO_PAGO'
+  | 'ESTADO';
 
 export interface PrestamoResumen {
   idPrestamo: number;
@@ -25,6 +40,12 @@ export interface PrestamoResumen {
   proximoPago: string | null;
   proximaCuota: number | null;
   estado: SituacionPrestamo;
+  /**
+   * Convenio al que pasó su saldo y convenio que generó este préstamo. Opcionales: un back anterior
+   * a los convenios no los envía.
+   */
+  folioConvenio?: string | null;
+  folioConvenioOrigen?: string | null;
 }
 
 export interface PaginaPrestamos {
@@ -34,7 +55,16 @@ export interface PaginaPrestamos {
   totalElementos: number;
   totalPaginas: number;
   /** Cuántos hay en cada filtro (no dependen de la búsqueda). */
-  contadores: { activos: number; conAtraso: number; liquidados: number; todos: number };
+  contadores: {
+    activos: number;
+    conAtraso: number;
+    liquidados: number;
+    todos: number;
+    /** De los convenios; un back anterior no los envía. */
+    alCorriente?: number;
+    enConvenio?: number;
+    cancelados?: number;
+  };
 }
 
 export interface CuotaCalendario {
@@ -57,6 +87,8 @@ export interface PrestamoDetalle {
 export interface ConsultaPrestamos {
   filtro: FiltroPrestamos;
   busqueda: string;
+  /** Solo los de este cliente. */
+  idCliente?: number;
   orden: OrdenPrestamos;
   direccion: 'ASC' | 'DESC';
   pagina: number;

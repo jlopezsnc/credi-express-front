@@ -21,7 +21,7 @@
   </p>
 </header>
 
-<h1 class="mt-4.5 mb-0.5 text-xl font-extrabold">Simulación de préstamo</h1>
+<h1 class="mt-4.5 mb-0.5 text-xl font-extrabold">{{ s.titulo }}</h1>
 <p>
   Cliente:
   @if (s.cliente) {
@@ -40,31 +40,39 @@
 </div>
 
 <dl class="grid grid-cols-2 gap-x-8 gap-y-1.5">
-  <div class="flex items-baseline justify-between gap-3">
-    <dt class="text-muted-foreground">Monto solicitado</dt>
-    <dd class="font-bold tabular-nums">{{ s.monto }}</dd>
-  </div>
-  <div class="flex items-baseline justify-between gap-3">
-    <dt class="text-muted-foreground">Interés mensual</dt>
-    <dd class="font-bold tabular-nums">{{ s.tasa }}</dd>
-  </div>
-  <div class="flex items-baseline justify-between gap-3">
-    <dt class="text-muted-foreground">Plazo</dt>
-    <dd class="font-bold tabular-nums">{{ s.meses }}</dd>
-  </div>
-  <div class="flex items-baseline justify-between gap-3">
-    <dt class="text-muted-foreground">Interés generado</dt>
-    <dd class="font-bold tabular-nums">{{ s.interes }}</dd>
-  </div>
-  <div class="flex items-baseline justify-between gap-3">
-    <dt class="text-muted-foreground">Primer pago</dt>
-    <dd class="font-bold">{{ s.primerPago }}</dd>
-  </div>
+  @for (d of s.datos; track d.etiqueta) {
+    <div class="flex items-baseline justify-between gap-3">
+      <dt class="text-muted-foreground">{{ d.etiqueta }}</dt>
+      <dd class="font-bold tabular-nums">{{ d.valor }}</dd>
+    </div>
+  }
   <div class="col-span-2 mt-1 flex items-baseline justify-between gap-3 border-t pt-2 text-[15px]">
-    <dt class="font-bold">Total a pagar</dt>
+    <dt class="font-bold">{{ s.etiquetaTotal }}</dt>
     <dd class="font-extrabold tabular-nums">{{ s.total }}</dd>
   </div>
 </dl>
+
+@if (s.prestamos.length > 0) {
+  <h2 class="mt-5 text-sm font-extrabold">Préstamos que se convienen</h2>
+  <table class="mt-1.5 w-full border-collapse text-xs">
+    <thead>
+      <tr class="text-muted-foreground text-left font-bold [&>th]:border-b [&>th]:py-1.5">
+        <th scope="col">Préstamo</th>
+        <th scope="col">A nombre de</th>
+        <th scope="col" class="text-right">Saldo</th>
+      </tr>
+    </thead>
+    <tbody>
+      @for (p of s.prestamos; track p.id) {
+        <tr class="break-inside-avoid tabular-nums [&>td]:border-b [&>td]:py-1.5">
+          <td>#{{ p.id }}</td>
+          <td>{{ p.cliente }}</td>
+          <td class="text-right">{{ p.saldo }}</td>
+        </tr>
+      }
+    </tbody>
+  </table>
+}
 
 <h2 class="mt-5 text-sm font-extrabold">Calendario de pagos</h2>
 <table class="mt-1.5 w-full border-collapse text-xs">
@@ -87,8 +95,4 @@
 </table>
 <p class="text-muted-foreground mt-1.5">{{ s.notaUltimoPago }}</p>
 
-<p class="text-muted-foreground mt-4.5 border-t pt-3 text-[11.5px]">
-  Esta simulación es informativa y no es un contrato ni una aprobación del crédito. Si estás de
-  acuerdo con las condiciones, comunícate con nosotros para proceder con la solicitud. Los importes
-  y las fechas se confirman al generar el préstamo.
-</p>
+<p class="text-muted-foreground mt-4.5 border-t pt-3 text-[11.5px]">{{ s.nota }}</p>

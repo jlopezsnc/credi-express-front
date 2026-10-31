@@ -14,7 +14,8 @@ export type EstatusCliente = 'ACTIVO' | 'INACTIVO';
 export interface ClienteRespuesta {
   idCliente: number;
   nombreCompleto: string;
-  curp: string;
+  /** Null en los clientes migrados del Excel sin CURP. */
+  curp: string | null;
   telefono: string | null;
   correoElectronico: string | null;
   domicilioCalle: string | null;
@@ -33,7 +34,7 @@ export function aCliente(r: ClienteRespuesta): Cliente {
   return {
     id: r.idCliente,
     nombreCompleto: r.nombreCompleto,
-    curp: r.curp,
+    curp: r.curp ?? '',
     telefono: r.telefono ?? '',
     correoElectronico: r.correoElectronico ?? '',
     domicilioCalle: r.domicilioCalle ?? '',
@@ -93,12 +94,12 @@ export class ClientesService {
     await this.cargar();
   }
 
-  // Pendientes en el back: contrato en docs/API-CLIENTES.md.
-
   async actualizar(id: number, datos: DatosCliente): Promise<void> {
     await firstValueFrom(this.http.put(apiUrl(`${BASE}/cliente-actualizar/${String(id)}`), datos));
     await this.cargar();
   }
+
+  // Pendientes en el back: contrato en docs/API-CLIENTES.md.
 
   /** Deja al cliente inactivo; su historial se conserva. */
   async darDeBaja(id: number): Promise<void> {

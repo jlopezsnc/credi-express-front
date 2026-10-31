@@ -46,9 +46,12 @@ export class PrestamosService {
    * Lista paginada que se vuelve a pedir sola cuando cambia `consulta` (y cancela la anterior).
    * Crear en un contexto de inyección (campo del componente).
    */
-  lista(consulta: Signal<ConsultaPrestamos>): HttpResourceRef<PaginaPrestamos | undefined> {
+  lista(
+    consulta: Signal<ConsultaPrestamos | undefined>,
+  ): HttpResourceRef<PaginaPrestamos | undefined> {
     return recursoApi<PaginaPrestamos>(() => {
       const c = consulta();
+      if (!c) return undefined;
       const params: Record<string, string | number> = {
         filtro: c.filtro,
         orden: c.orden,
@@ -57,6 +60,7 @@ export class PrestamosService {
         tamano: c.tamano,
       };
       if (c.busqueda.trim()) params['busqueda'] = c.busqueda.trim();
+      if (c.idCliente !== undefined) params['idCliente'] = c.idCliente;
       return { url: apiUrl(`${BASE}/prestamos`), params };
     });
   }

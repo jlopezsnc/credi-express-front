@@ -127,7 +127,8 @@ export interface Liquidacion {
   nota: string | null;
   pagos: { idPago: number; idCuota: number; numeroCuota: number; importe: string }[];
   prestamoLiquidado: boolean;
-  clienteSinAdeudos: boolean;
+  /** Al momento de cobrar; `null` en una reimpresión (no se guarda y hoy puede ser otra). */
+  clienteSinAdeudos: boolean | null;
   registradoPor: string;
   fechaRegistro: string;
 }
@@ -151,6 +152,23 @@ export interface OperacionPago {
   registradoPor: string;
   estatus: EstatusPago;
 }
+
+/** `GET /recibo/{folio}`: lo mismo que se respondió al cobrar, para reimprimir el recibo. */
+export type ReciboOperacion =
+  | {
+      tipo: 'CUOTA_COMPLETA' | 'ABONO_PARCIAL';
+      modalidad: ModalidadResumen;
+      totalCuotas: number;
+      pago: Pago;
+      liquidacion: null;
+    }
+  | {
+      tipo: 'LIQUIDACION';
+      modalidad: ModalidadResumen;
+      totalCuotas: number;
+      pago: null;
+      liquidacion: Liquidacion;
+    };
 
 /** Datos comunes de `pago-registrar` y `prestamo-liquidar`. */
 interface PeticionBase {
