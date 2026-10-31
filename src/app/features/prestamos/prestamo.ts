@@ -1,105 +1,64 @@
 /*
- * Préstamos armados a partir de las cuotas de `GET /operaciones-prestamos/buscar-ep/todo`.
- * El back devuelve una fila por cuota; aquí se agrupan por `idCalculadoraPrestamo`.
- * Contrato y pendientes en docs/API-PRESTAMOS.md.
+ * Tipos de la lista y el calendario de préstamos (`GET /operaciones-prestamos/prestamos` y
+ * `/prestamos/{id}`, docs/API-PRESTAMOS.md). Estado, próximo pago, pagos hechos y saldo los calcula
+ * el back con los abonos vigentes y "hoy" en hora de México: el front solo los muestra.
  */
+import type { ClienteResumen, ModalidadResumen } from '@/features/cobranza/cobranza-api';
 
-/** Cuota tal como llega del back. */
-export interface CuotaRespuesta {
-  id: number;
-  clienteResponse: { idCliente: number; nombreCompleto: string } | null;
-  modalidadResponse: { idModalidad: number; descripcion: string } | null;
+export type SituacionPrestamo = 'AL_CORRIENTE' | 'CON_ATRASO' | 'LIQUIDADO';
+export type EstatusCuota = 'PAGADA' | 'VENCIDA' | 'ABONO_PARCIAL' | 'PENDIENTE';
+export type FiltroPrestamos = 'ACTIVOS' | 'CON_ATRASO' | 'LIQUIDADOS' | 'TODOS';
+export type OrdenPrestamos =
+  'CLIENTE' | 'PAGOS' | 'CUOTA' | 'TOTAL' | 'SALDO' | 'PROXIMO_PAGO' | 'ESTADO';
+
+export interface PrestamoResumen {
+  idPrestamo: number;
+  cliente: ClienteResumen;
+  modalidad: ModalidadResumen;
+  numeroCuotas: number;
+  cuotasPagadas: number;
+  cuotasVencidas: number;
+  importeCuota: string;
+  totalPagar: string;
+  saldoPendiente: string;
+  /** `null` si está liquidado. */
+  proximoPago: string | null;
+  proximaCuota: number | null;
+  estado: SituacionPrestamo;
+}
+
+export interface PaginaPrestamos {
+  contenido: PrestamoResumen[];
+  pagina: number;
+  tamano: number;
+  totalElementos: number;
+  totalPaginas: number;
+  /** Cuántos hay en cada filtro (no dependen de la búsqueda). */
+  contadores: { activos: number; conAtraso: number; liquidados: number; todos: number };
+}
+
+export interface CuotaCalendario {
+  idCuota: number;
   numeroCuota: number;
   fechaVencimiento: string;
-  /** El back lo manda como número (double); se convierte a centavos al leerlo. */
-  importeCuota: number | string;
+  importe: string;
+  abonado: string;
+  saldo: string;
   fechaPago: string | null;
-  estadoPago: number | null;
-  diasMoratorios: number | null;
-  alerta: string | null;
-  idCalculadoraPrestamo: number;
+  estatus: EstatusCuota;
 }
 
-export type EstadoCuota = 'pagada' | 'vencida' | 'pendiente';
-export type EstadoPrestamo = 'liquidado' | 'atraso' | 'corriente';
-
-export interface Cuota {
-  id: number;
-  numero: number;
-  fechaVencimiento: string;
-  importeCent: number;
-  fechaPago: string | undefined;
-  estado: EstadoCuota;
+export interface PrestamoDetalle {
+  prestamo: PrestamoResumen;
+  cuotas: CuotaCalendario[];
 }
 
-export interface Prestamo {
-  id: number;
-  idCliente: number;
-  cliente: string;
-  modalidad: string;
-  cuotas: Cuota[];
-  totalCent: number;
-  saldoCent: number;
-  pagadas: number;
-  vencidas: number;
-  /** Primera cuota sin pagar. */
-  proxima: Cuota | undefined;
-  estado: EstadoPrestamo;
-}
-
-function aCentavos(valor: number | string): number {
-  const numero = typeof valor === 'string' ? Number(valor) : valor;
-  return Number.isFinite(numero) ? Math.round(numero * 100) : 0;
-}
-
-/** Estado de una cuota según su fecha de pago y vencimiento (`hoy` en `yyyy-MM-dd`). */
-export function estadoCuota(
-  c: Pick<CuotaRespuesta, 'fechaPago' | 'fechaVencimiento'>,
-  hoy: string,
-): EstadoCuota {
-  if (c.fechaPago) return 'pagada';
-  return c.fechaVencimiento < hoy ? 'vencida' : 'pendiente';
-}
-
-/** Agrupa las cuotas en préstamos, del más reciente al más antiguo. */
-export function agruparPrestamos(filas: readonly CuotaRespuesta[], hoy: string): Prestamo[] {
-  const grupos = new Map<number, CuotaRespuesta[]>();
-  for (const fila of filas) {
-    const grupo = grupos.get(fila.idCalculadoraPrestamo);
-    if (grupo) grupo.push(fila);
-    else grupos.set(fila.idCalculadoraPrestamo, [fila]);
-  }
-
-  return [...grupos.entries()]
-    .map(([id, grupo]) => {
-      const cuotas = grupo
-        .map<Cuota>((f) => ({
-          id: f.id,
-          numero: f.numeroCuota,
-          fechaVencimiento: f.fechaVencimiento,
-          importeCent: aCentavos(f.importeCuota),
-          fechaPago: f.fechaPago ?? undefined,
-          estado: estadoCuota(f, hoy),
-        }))
-        .sort((a, b) => a.numero - b.numero);
-      const primera = grupo[0];
-      const pendientes = cuotas.filter((c) => c.estado !== 'pagada');
-      const vencidas = pendientes.filter((c) => c.estado === 'vencida').length;
-      const estado: EstadoPrestamo =
-        pendientes.length === 0 ? 'liquidado' : vencidas > 0 ? 'atraso' : 'corriente';
-      return {
-        id,
-        idCliente: primera?.clienteResponse?.idCliente ?? 0,
-        cliente: primera?.clienteResponse?.nombreCompleto ?? 'Sin cliente',
-        modalidad: primera?.modalidadResponse?.descripcion ?? '—',
-        cuotas,
-        totalCent: cuotas.reduce((suma, c) => suma + c.importeCent, 0),
-        saldoCent: pendientes.reduce((suma, c) => suma + c.importeCent, 0),
-        pagadas: cuotas.length - pendientes.length,
-        vencidas,
-        proxima: pendientes[0],
-        estado,
-      };
-    })
-    .sort((a, b) => b.id - a.id);
+/** Petición de una página de la lista. */
+export interface ConsultaPrestamos {
+  filtro: FiltroPrestamos;
+  busqueda: string;
+  orden: OrdenPrestamos;
+  direccion: 'ASC' | 'DESC';
+  pagina: number;
+  tamano: number;
 }

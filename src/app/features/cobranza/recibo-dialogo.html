@@ -1,0 +1,113 @@
+@let r = recibo();
+<dialog
+  #caja
+  appDialogoModal
+  aria-labelledby="t-recibo"
+  class="bg-card text-foreground backdrop:bg-overlay mx-0 mt-auto mb-0 max-h-[94%] w-full max-w-none rounded-t-3xl border border-b-0 p-0 shadow-2xl sm:m-auto sm:max-h-[calc(100%-3rem)] sm:max-w-130 sm:rounded-2xl sm:border-b"
+  (cerrar)="cerrar.emit()"
+>
+  <div class="flex items-center justify-between gap-4 border-b px-6 pt-5 pb-4">
+    <div class="flex min-w-0 items-center gap-3">
+      @if (logoUrl && !logoFallo()) {
+        <img
+          [src]="logoUrl"
+          alt="Logotipo de Credi Express"
+          class="h-11 max-w-40 shrink-0 object-contain"
+          (error)="logoFallo.set(true)"
+        />
+      } @else {
+        <span
+          class="bg-primary text-primary-foreground inline-flex size-11 shrink-0 items-center justify-center rounded-xl"
+        >
+          <app-icono nombre="marca" class="size-6.5" />
+        </span>
+      }
+      <span class="min-w-0">
+        <span class="block text-[17px] font-extrabold">Credi Express</span>
+        <span class="text-muted-foreground block text-xs">Préstamos y cobranza</span>
+      </span>
+    </div>
+    <span class="shrink-0 text-right">
+      <span class="text-muted-foreground block text-[11px] font-bold tracking-widest uppercase"
+        >Recibo de pago</span
+      >
+      <span class="mt-0.5 block font-mono text-[13px]">{{ r.folio }}</span>
+    </span>
+  </div>
+
+  <div class="flex flex-col items-center gap-2 px-6 pt-5 pb-1 text-center">
+    <span class="bg-ok-soft text-ok inline-flex size-10 items-center justify-center rounded-full">
+      <app-icono nombre="listo" class="size-5.5" />
+    </span>
+    <h2 id="t-recibo" class="text-xl font-extrabold">{{ r.titulo }}</h2>
+    <p class="text-muted-foreground text-[13px]">Registrado el {{ r.registro }}</p>
+  </div>
+
+  <dl class="flex flex-col gap-2.5 px-6 py-4 text-sm">
+    @for (f of r.filas; track f.etiqueta) {
+      <div class="flex justify-between gap-4">
+        <dt class="text-muted-foreground shrink-0">{{ f.etiqueta }}</dt>
+        <dd class="min-w-0 text-right font-bold break-words">{{ f.valor }}</dd>
+      </div>
+    }
+    <div class="border-t"></div>
+    @for (f of r.importes; track f.etiqueta) {
+      <div class="flex justify-between gap-4" [class.text-base]="f.fuerte">
+        <dt [class]="f.fuerte ? 'font-bold' : 'text-muted-foreground'">{{ f.etiqueta }}</dt>
+        <dd class="tabular-nums" [class]="f.fuerte ? 'font-extrabold' : 'font-bold'">
+          {{ f.valor }}
+        </dd>
+      </div>
+    }
+    <div class="flex items-center justify-between gap-4">
+      <dt class="text-muted-foreground">{{ r.saldoEtiqueta }}</dt>
+      <dd>
+        <span
+          class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-bold whitespace-nowrap before:size-1.5 before:rounded-full before:bg-current"
+          [class]="r.liquidada ? 'bg-ok-soft text-ok' : 'bg-aviso-soft text-aviso'"
+        >
+          {{ r.saldo }}
+        </span>
+      </dd>
+    </div>
+  </dl>
+
+  @if (r.nota) {
+    <p class="text-ok mx-6 mb-2 text-center text-sm font-bold">{{ r.nota }}</p>
+  }
+
+  @if (pngUrl()) {
+    <p
+      role="status"
+      class="bg-primary-soft text-primary-ink mx-6 mb-1 flex items-start gap-2 rounded-lg px-3.5 py-2.5 text-[13px] font-semibold"
+    >
+      <app-icono nombre="descargar" class="mt-px size-4" />
+      <span class="min-w-0 [overflow-wrap:anywhere]">
+        Recibo creado: {{ r.archivo }}.
+        <button
+          type="button"
+          class="hover:text-foreground cursor-pointer font-bold underline underline-offset-2"
+          (click)="descargarDeNuevo()"
+        >
+          Descargar de nuevo
+        </button>
+      </span>
+    </p>
+  }
+  @if (errorPng()) {
+    <p
+      role="alert"
+      class="bg-destructive-soft text-destructive mx-6 mb-1 rounded-lg px-3.5 py-2.5 text-[13px] font-semibold"
+    >
+      {{ errorPng() }}
+    </p>
+  }
+
+  <div class="flex flex-col-reverse gap-3 px-6 pt-3 pb-6 sm:flex-row sm:justify-center">
+    <button type="button" class="btn-secundario" [disabled]="creando()" (click)="crearRecibo()">
+      <app-icono nombre="descargar" />
+      {{ creando() ? 'Creando recibo…' : 'Crear recibo' }}
+    </button>
+    <button type="button" class="btn-primario" (click)="cerrar.emit()">Listo</button>
+  </div>
+</dialog>

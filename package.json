@@ -10,7 +10,7 @@
     "ng": "ng",
     "env": "node scripts/generar-env.mjs",
     "prestart": "npm run env",
-    "start": "ng serve",
+    "start": "ng serve --host 0.0.0.0",
     "prebuild": "npm run env",
     "build": "ng build",
     "pretypecheck": "npm run env -- --sin-validar",

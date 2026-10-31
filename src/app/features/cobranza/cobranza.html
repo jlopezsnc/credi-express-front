@@ -1,0 +1,356 @@
+<header>
+  <p class="text-muted-foreground mb-1.5 text-[13px] font-semibold">Operación / Cobranza</p>
+  <h1 class="text-[26px] font-extrabold tracking-tight lg:text-[32px]">Cobranza</h1>
+  <p class="text-muted-foreground mt-1.5 text-sm">
+    {{ hoyTexto() }} · Cuotas por cobrar, atrasos y pagos registrados hoy.
+  </p>
+</header>
+
+@if (cargandoInicial()) {
+  <div class="tarjeta text-muted-foreground px-6 py-12 text-center text-sm" aria-busy="true">
+    Cargando cobranza…
+  </div>
+} @else if (error() && !resumen.hasValue()) {
+  <div role="alert" class="tarjeta px-6 py-12 text-center">
+    <p class="text-base font-bold">No se pudo cargar la cobranza</p>
+    <p class="text-muted-foreground mt-1.5 text-sm">{{ error() }}</p>
+    <button type="button" class="btn-secundario mt-4" (click)="recargar()">Reintentar</button>
+  </div>
+} @else {
+  @if (error(); as mensaje) {
+    <div
+      role="alert"
+      class="bg-destructive-soft text-destructive flex flex-wrap items-center justify-between gap-3 rounded-lg px-4 py-3 text-sm font-semibold"
+    >
+      {{ mensaje }}
+      <button type="button" class="btn-secundario min-h-9" (click)="recargar()">Reintentar</button>
+    </div>
+  }
+
+  @if (tarjetas().length > 0) {
+    <section class="grid grid-cols-1 gap-3 lg:grid-cols-3 lg:gap-4" aria-label="Resumen del día">
+      @for (tarjeta of tarjetas(); track tarjeta.titulo) {
+        <div
+          class="tarjeta flex items-center justify-between gap-3 px-4 py-3.5 lg:flex-col lg:items-start lg:gap-1 lg:px-5 lg:py-4.5"
+        >
+          <span class="text-[13px] font-bold" [class]="tarjeta.clase">{{ tarjeta.titulo }}</span>
+          <span class="flex flex-col items-end gap-0.5 lg:items-start">
+            <span class="text-xl font-extrabold tracking-tight tabular-nums lg:text-[26px]">
+              {{ tarjeta.monto }}
+            </span>
+            <span class="text-muted-foreground text-xs lg:text-[13px]">{{ tarjeta.detalle }}</span>
+          </span>
+        </div>
+      }
+    </section>
+  }
+
+  <label
+    class="border-border bg-card text-muted-foreground focus-within:border-primary focus-within:ring-primary-soft flex min-h-11 items-center gap-2.5 rounded-lg border px-3.5 focus-within:ring-3 lg:max-w-110"
+  >
+    <app-icono nombre="buscar" />
+    <input
+      type="search"
+      placeholder="Buscar por cliente"
+      aria-label="Buscar por cliente"
+      class="text-foreground placeholder:text-muted-foreground w-full min-w-0 bg-transparent text-sm outline-none"
+      [value]="busqueda()"
+      (input)="alBuscar($event)"
+    />
+  </label>
+
+  <div
+    role="group"
+    aria-label="Filtrar cobranza"
+    class="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 lg:mx-0 lg:flex-wrap lg:overflow-visible lg:px-0 lg:pb-0"
+  >
+    @for (p of pestanas(); track p.id) {
+      @let activo = pestana() === p.id;
+      <button
+        type="button"
+        [attr.aria-pressed]="activo"
+        class="inline-flex min-h-9 shrink-0 cursor-pointer items-center gap-2 rounded-full border px-3.5 text-[13px] font-semibold whitespace-nowrap"
+        [class]="
+          activo
+            ? 'bg-foreground text-card border-foreground'
+            : 'bg-card text-muted-foreground hover:text-foreground'
+        "
+        (click)="pestana.set(p.id)"
+      >
+        {{ p.etiqueta }}
+        <span
+          class="rounded-full px-1.75 py-px text-xs tabular-nums"
+          [class]="activo ? 'bg-neutral-500/30' : 'bg-accent text-foreground'"
+        >
+          {{ p.cantidad }}
+        </span>
+      </button>
+    }
+  </div>
+
+  @if (pestana() !== 'COBRADO') {
+    <!-- Escritorio: tabla -->
+    <section class="tarjeta hidden overflow-hidden lg:block" aria-label="Cuotas por cobrar">
+      <div class="overflow-x-auto">
+        <table class="w-full border-collapse text-sm">
+          <thead>
+            <tr
+              class="bg-muted text-muted-foreground text-left text-xs font-bold tracking-wider uppercase [&>th]:border-b [&>th]:px-3 [&>th]:py-3 [&>th]:whitespace-nowrap [&>th:first-child]:pl-4.5 [&>th:last-child]:pr-4.5"
+            >
+              <th scope="col" [attr.aria-sort]="tabla.ariaSort('cliente')">
+                <app-encabezado-ordenable
+                  [direccion]="tabla.direccion('cliente')"
+                  (ordenar)="tabla.ordenarPor('cliente')"
+                  >Cliente</app-encabezado-ordenable
+                >
+              </th>
+              <th scope="col" [attr.aria-sort]="tabla.ariaSort('pago')">
+                <app-encabezado-ordenable
+                  [direccion]="tabla.direccion('pago')"
+                  (ordenar)="tabla.ordenarPor('pago')"
+                  >Pago</app-encabezado-ordenable
+                >
+              </th>
+              <th scope="col" [attr.aria-sort]="tabla.ariaSort('vence')">
+                <app-encabezado-ordenable
+                  [direccion]="tabla.direccion('vence')"
+                  (ordenar)="tabla.ordenarPor('vence')"
+                  >Vence</app-encabezado-ordenable
+                >
+              </th>
+              <th scope="col" [attr.aria-sort]="tabla.ariaSort('situacion')">
+                <app-encabezado-ordenable
+                  [direccion]="tabla.direccion('situacion')"
+                  (ordenar)="tabla.ordenarPor('situacion')"
+                  >Situación</app-encabezado-ordenable
+                >
+              </th>
+              <th scope="col" class="text-right" [attr.aria-sort]="tabla.ariaSort('saldo')">
+                <app-encabezado-ordenable
+                  [direccion]="tabla.direccion('saldo')"
+                  [alDerecha]="true"
+                  (ordenar)="tabla.ordenarPor('saldo')"
+                  >Saldo de la cuota</app-encabezado-ordenable
+                >
+              </th>
+              <th scope="col"><span class="sr-only">Acciones</span></th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (fila of tabla.pagina().elementos; track fila.cuota.idCuota) {
+              <tr
+                class="hover:bg-accent [&>td]:border-b [&>td]:px-3 [&>td]:py-3.5 [&>td]:whitespace-nowrap last:[&>td]:border-b-0 [&>td:first-child]:pl-4.5 [&>td:last-child]:pr-4.5"
+              >
+                <td>
+                  <div class="flex items-center gap-3">
+                    <span
+                      class="inline-flex size-9.5 shrink-0 items-center justify-center rounded-full text-[13px] font-extrabold"
+                      [class]="fila.avatar"
+                    >
+                      {{ fila.iniciales }}
+                    </span>
+                    <div>
+                      <div class="font-bold">{{ fila.cuota.cliente.nombreCompleto }}</div>
+                      <div class="text-muted-foreground mt-0.5 text-xs tabular-nums">
+                        {{ fila.cuota.cliente.telefono || 'Sin teléfono' }}
+                      </div>
+                    </div>
+                  </div>
+                </td>
+                <td>
+                  <div class="font-semibold">{{ fila.pago }}</div>
+                  <div class="text-muted-foreground mt-0.5 text-xs">{{ fila.prestamo }}</div>
+                </td>
+                <td class="tabular-nums">{{ fila.vence }}</td>
+                <td>
+                  <span
+                    class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-bold whitespace-nowrap before:size-1.5 before:rounded-full before:bg-current"
+                    [class]="fila.situacion.clase"
+                  >
+                    {{ fila.situacion.texto }}
+                  </span>
+                </td>
+                <td class="text-right tabular-nums">
+                  <div class="font-extrabold">{{ fila.saldo }}</div>
+                  @if (fila.abono) {
+                    <div class="text-muted-foreground mt-0.5 text-xs">{{ fila.abono }}</div>
+                  }
+                </td>
+                <td class="text-right">
+                  <button
+                    type="button"
+                    class="btn-primario min-h-9 px-3.5 text-[13px]"
+                    [attr.aria-label]="fila.etiquetaCobrar"
+                    (click)="enCobro.set(fila.cuota)"
+                  >
+                    Cobrar
+                  </button>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+      @if (tabla.pagina().total === 0 && !cuotas.isLoading() && vacio(); as v) {
+        <div class="px-6 py-12 text-center">
+          <p class="text-base font-bold">{{ v.titulo }}</p>
+          <p class="text-muted-foreground mt-1.5 text-sm">{{ v.texto }}</p>
+        </div>
+      }
+      <div class="flex flex-col gap-2 border-t px-4.5 py-2.5">
+        <app-paginador
+          [pagina]="tabla.pagina()"
+          sustantivo="cuotas"
+          (cambiar)="tabla.irA($event)"
+        />
+        <div class="text-muted-foreground flex items-center justify-between gap-3 text-[13px]">
+          <span>{{ pieCuotas() }}</span>
+          @if (cargando()) {
+            <span aria-live="polite">Actualizando…</span>
+          }
+        </div>
+      </div>
+    </section>
+
+    <!-- Teléfono: tarjetas -->
+    <section class="grid grid-cols-1 gap-3 lg:hidden" aria-label="Cuotas por cobrar">
+      <app-orden-movil
+        campo="orden-cuotas"
+        [columnas]="columnas"
+        [orden]="tabla.orden()"
+        (cambiar)="ordenarMovil($event)"
+      />
+      @for (fila of tabla.pagina().elementos; track fila.cuota.idCuota) {
+        <article class="tarjeta p-4">
+          <div class="flex items-center gap-3">
+            <span
+              class="inline-flex size-9.5 shrink-0 items-center justify-center rounded-full text-[13px] font-extrabold"
+              [class]="fila.avatar"
+            >
+              {{ fila.iniciales }}
+            </span>
+            <div class="min-w-0 flex-1">
+              <div class="truncate text-[15px] font-bold">
+                {{ fila.cuota.cliente.nombreCompleto }}
+              </div>
+              <div class="text-muted-foreground mt-0.5 text-xs">
+                {{ fila.pago }} · {{ fila.prestamo }}
+              </div>
+            </div>
+          </div>
+          <div class="mt-3.5 flex items-center justify-between gap-3">
+            <div class="flex flex-col items-start gap-1.5">
+              <span
+                class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-bold whitespace-nowrap before:size-1.5 before:rounded-full before:bg-current"
+                [class]="fila.situacion.clase"
+              >
+                {{ fila.situacion.texto }}
+              </span>
+              <span class="text-muted-foreground text-xs">Vence {{ fila.vence }}</span>
+            </div>
+            <div class="text-right">
+              <div class="text-lg font-extrabold tabular-nums">{{ fila.saldo }}</div>
+              @if (fila.abono) {
+                <div class="text-muted-foreground text-xs">{{ fila.abono }}</div>
+              }
+            </div>
+          </div>
+          <button
+            type="button"
+            class="btn-primario mt-3.5 w-full"
+            [attr.aria-label]="fila.etiquetaCobrar"
+            (click)="enCobro.set(fila.cuota)"
+          >
+            Registrar pago
+          </button>
+        </article>
+      }
+      @if (tabla.pagina().total === 0 && !cuotas.isLoading() && vacio(); as v) {
+        <div class="tarjeta px-5 py-8 text-center">
+          <p class="font-bold">{{ v.titulo }}</p>
+          <p class="text-muted-foreground mt-1.5 text-sm">{{ v.texto }}</p>
+        </div>
+      }
+      <app-paginador
+        class="mt-1"
+        [pagina]="tabla.pagina()"
+        sustantivo="cuotas"
+        (cambiar)="tabla.irA($event)"
+      />
+      @if (pieCuotas()) {
+        <p class="text-muted-foreground text-center text-[13px]">{{ pieCuotas() }}</p>
+      }
+    </section>
+  } @else {
+    <section class="tarjeta overflow-hidden" aria-label="Pagos registrados hoy">
+      <div class="overflow-x-auto">
+        <table class="w-full border-collapse text-sm">
+          <thead>
+            <tr
+              class="bg-muted text-muted-foreground text-left text-xs font-bold tracking-wider uppercase [&>th]:border-b [&>th]:px-3 [&>th]:py-3 [&>th]:whitespace-nowrap [&>th:first-child]:pl-4.5 [&>th:last-child]:pr-4.5"
+            >
+              <th scope="col">Folio</th>
+              <th scope="col">Cliente</th>
+              <th scope="col">Pago</th>
+              <th scope="col">Método</th>
+              <th scope="col">Hora</th>
+              <th scope="col" class="text-right">Importe</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (o of tablaPagos.pagina().elementos; track o.folio) {
+              <tr
+                class="hover:bg-accent [&>td]:border-b [&>td]:px-3 [&>td]:py-3.5 [&>td]:whitespace-nowrap last:[&>td]:border-b-0 [&>td:first-child]:pl-4.5 [&>td:last-child]:pr-4.5"
+              >
+                <td class="font-mono text-[13px]">{{ o.folio }}</td>
+                <td class="font-bold">{{ o.cliente }}</td>
+                <td>
+                  <div class="font-semibold">{{ o.pago }} · {{ o.prestamo }}</div>
+                  <div class="text-muted-foreground mt-0.5 text-xs">{{ o.tipo }}</div>
+                </td>
+                <td>{{ o.metodo }}</td>
+                <td class="tabular-nums">{{ o.hora }}</td>
+                <td class="text-right font-extrabold tabular-nums">{{ o.importe }}</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+      @if (tablaPagos.pagina().total === 0 && !operaciones.isLoading()) {
+        <div class="px-6 py-12 text-center">
+          @if (vacio(); as v) {
+            <p class="text-base font-bold">{{ v.titulo }}</p>
+            <p class="text-muted-foreground mt-1.5 text-sm">
+              No hay pagos de clientes con ese nombre.
+            </p>
+          } @else {
+            <p class="text-base font-bold">Sin pagos registrados</p>
+            <p class="text-muted-foreground mt-1.5 text-sm">
+              Los pagos que registres hoy aparecerán aquí.
+            </p>
+          }
+        </div>
+      }
+      <div class="flex flex-col gap-2 border-t px-4.5 py-2.5">
+        <app-paginador
+          [pagina]="tablaPagos.pagina()"
+          sustantivo="pagos"
+          (cambiar)="tablaPagos.irA($event)"
+        />
+        <span class="text-muted-foreground text-[13px]">{{ piePagos() }}</span>
+      </div>
+    </section>
+  }
+}
+
+@if (enCobro(); as cuota) {
+  <app-cobro-dialogo
+    [cuota]="cuota"
+    (registrado)="alRegistrar($event)"
+    (cerrar)="enCobro.set(undefined)"
+  />
+}
+
+@if (recibo(); as r) {
+  <app-recibo-dialogo [recibo]="r" (cerrar)="cerrarRecibo()" />
+}

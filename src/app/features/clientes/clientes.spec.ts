@@ -65,6 +65,14 @@ describe('Clientes', () => {
     );
   }
 
+  function encabezado(texto: string): HTMLButtonElement {
+    const encontrado = [...pantalla.querySelectorAll<HTMLButtonElement>('thead button')].find(
+      (b) => b.textContent.trim() === texto,
+    );
+    if (!encontrado) throw new Error(`No hay encabezado "${texto}"`);
+    return encontrado;
+  }
+
   function boton(texto: string): HTMLButtonElement {
     const encontrado = [...pantalla.querySelectorAll('button')].find((b) =>
       b.textContent.includes(texto),
@@ -107,11 +115,57 @@ describe('Clientes', () => {
   it('muestra "Cargando" y luego solo los clientes activos', async () => {
     expect(pantalla.textContent).toContain('Cargando clientes');
     await cargarLista();
+    // Por defecto, por nombre.
     expect(nombresEnTabla()).toEqual([
-      'María Fernanda López Ruiz',
+      'Guadalupe Martínez Torres',
       'José Antonio Hernández Cruz',
+      'María Fernanda López Ruiz',
+    ]);
+  });
+
+  it('ordena por la columna elegida y alterna la dirección', async () => {
+    await cargarLista();
+    const curp = encabezado('CURP');
+    curp.click();
+    await fixture.whenStable();
+    expect(nombresEnTabla()).toEqual([
+      'José Antonio Hernández Cruz',
+      'María Fernanda López Ruiz',
       'Guadalupe Martínez Torres',
     ]);
+    expect(curp.closest('th')?.getAttribute('aria-sort')).toBe('ascending');
+
+    curp.click();
+    await fixture.whenStable();
+    expect(nombresEnTabla()[0]).toBe('Guadalupe Martínez Torres');
+    expect(curp.closest('th')?.getAttribute('aria-sort')).toBe('descending');
+
+    // El saldo vacío queda al final en ambas direcciones.
+    encabezado('Saldo pendiente').click();
+    await fixture.whenStable();
+    expect(nombresEnTabla()[0]).toBe('José Antonio Hernández Cruz');
+  });
+
+  it('pagina de 10 en 10 y vuelve a la primera página al buscar', async () => {
+    const muchos = Array.from({ length: 23 }, (_, i) =>
+      cliente(
+        i + 1,
+        `Cliente ${String(i + 1).padStart(2, '0')}`,
+        `CURP${String(i).padStart(14, '0')}`,
+      ),
+    );
+    await cargarLista(muchos);
+    expect(nombresEnTabla()).toHaveLength(10);
+    expect(pantalla.textContent).toContain('Mostrando 1–10 de 23 clientes');
+
+    pantalla.querySelector<HTMLButtonElement>('[aria-label="Página 3"]')?.click();
+    await fixture.whenStable();
+    expect(nombresEnTabla()).toEqual(['Cliente 21', 'Cliente 22', 'Cliente 23']);
+    expect(pantalla.textContent).toContain('Mostrando 21–23 de 23 clientes');
+
+    escribir('input[type="search"]', 'cliente 1');
+    await fixture.whenStable();
+    expect(pantalla.textContent).toContain('Mostrando 1–10 de 10 clientes');
   });
 
   it('ofrece reintentar si el back no responde', async () => {

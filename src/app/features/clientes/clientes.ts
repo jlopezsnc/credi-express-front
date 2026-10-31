@@ -4,6 +4,11 @@ import { formatearMoneda, iniciales, normalizarTexto } from '@/core/format';
 import { AvisosService } from '@/core/ui/avisos.service';
 import { claseAvatar } from '@/core/ui/avatar';
 import { DialogoModal } from '@/core/ui/dialogo-modal';
+import { EncabezadoOrdenable } from '@/core/tabla/encabezado-ordenable';
+import { type ColumnaOrden, OrdenMovil } from '@/core/tabla/orden-movil';
+import { Paginador } from '@/core/tabla/paginador';
+import type { Orden } from '@/core/tabla/tabla';
+import { TablaLocal } from '@/core/tabla/tabla-local';
 import { Icono } from '@/core/ui/icono';
 import type { Cliente, DatosCliente } from '@/features/clientes/cliente';
 import { ClienteForm } from '@/features/clientes/cliente-form';
@@ -17,6 +22,25 @@ const FILTROS: readonly { id: Filtro; etiqueta: string; aplica: (c: Cliente) => 
   { id: 'inactivos', etiqueta: 'Inactivos', aplica: (c) => !c.activo },
   { id: 'todos', etiqueta: 'Todos', aplica: () => true },
 ];
+
+const POR_PAGINA = 10;
+
+type Columna = 'nombre' | 'curp' | 'telefono' | 'ciudad' | 'prestamos' | 'saldo' | 'estado';
+
+/** Columnas ordenables, en el orden de la tabla (también las ofrece el selector del celular). */
+const COLUMNAS: readonly (ColumnaOrden & { id: Columna })[] = [
+  { id: 'nombre', etiqueta: 'Cliente' },
+  { id: 'curp', etiqueta: 'CURP' },
+  { id: 'telefono', etiqueta: 'Teléfono' },
+  { id: 'ciudad', etiqueta: 'Ciudad' },
+  { id: 'prestamos', etiqueta: 'Préstamos' },
+  { id: 'saldo', etiqueta: 'Saldo pendiente' },
+  { id: 'estado', etiqueta: 'Estado' },
+];
+
+function esColumna(id: string): id is Columna {
+  return COLUMNAS.some((c) => c.id === id);
+}
 
 /** Lo que la tabla y las tarjetas muestran de cada cliente, ya formateado. */
 interface FilaCliente {
@@ -47,7 +71,7 @@ function estadoDe(c: Cliente): { texto: string; clase: string } {
 /** Catálogo de clientes: búsqueda, filtros, alta, edición, baja y reactivación. */
 @Component({
   selector: 'app-clientes',
-  imports: [ClienteForm, DialogoModal, Icono],
+  imports: [ClienteForm, DialogoModal, EncabezadoOrdenable, Icono, OrdenMovil, Paginador],
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { class: 'flex flex-col gap-6' },
   templateUrl: './clientes.html',
@@ -105,6 +129,25 @@ export class Clientes {
       }));
   });
 
+  protected readonly columnas = COLUMNAS;
+
+  /** Orden y paginación de la lista ya filtrada (10 por página). */
+  protected readonly tabla = new TablaLocal<FilaCliente, Columna>({
+    datos: () => this.filas(),
+    criterios: {
+      nombre: (f) => f.cliente.nombreCompleto,
+      curp: (f) => f.cliente.curp,
+      telefono: (f) => f.cliente.telefono,
+      ciudad: (f) => f.cliente.domicilioCiudad,
+      prestamos: (f) => f.cliente.prestamosActivos,
+      saldo: (f) =>
+        f.cliente.saldoPendiente === undefined ? undefined : Number(f.cliente.saldoPendiente),
+      estado: (f) => f.estado.texto,
+    },
+    ordenInicial: { columna: 'nombre', direccion: 'asc' },
+    tamano: POR_PAGINA,
+  });
+
   protected readonly textoBaja = computed(() => {
     const cliente = this.aDarDeBaja();
     if (!cliente) return '';
@@ -123,6 +166,10 @@ export class Clientes {
 
   constructor() {
     void this.servicio.cargar();
+  }
+
+  protected ordenarMovil(orden: Orden<string>): void {
+    if (esColumna(orden.columna)) this.tabla.fijarOrden(orden.columna, orden.direccion);
   }
 
   protected alBuscar(evento: Event): void {

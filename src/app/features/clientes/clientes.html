@@ -94,18 +94,66 @@
           <tr
             class="bg-muted text-muted-foreground text-left text-xs font-bold tracking-wider uppercase [&>th]:border-b [&>th]:px-3 [&>th]:py-3 [&>th]:whitespace-nowrap [&>th:first-child]:pl-4.5 [&>th:last-child]:pr-4.5"
           >
-            <th scope="col">Cliente</th>
-            <th scope="col">CURP</th>
-            <th scope="col">Teléfono</th>
-            <th scope="col" class="hidden 2xl:table-cell">Ciudad</th>
-            <th scope="col" class="text-right">Préstamos</th>
-            <th scope="col" class="text-right">Saldo pendiente</th>
-            <th scope="col">Estado</th>
+            <th scope="col" [attr.aria-sort]="tabla.ariaSort('nombre')">
+              <app-encabezado-ordenable
+                [direccion]="tabla.direccion('nombre')"
+                (ordenar)="tabla.ordenarPor('nombre')"
+                >Cliente</app-encabezado-ordenable
+              >
+            </th>
+            <th scope="col" [attr.aria-sort]="tabla.ariaSort('curp')">
+              <app-encabezado-ordenable
+                [direccion]="tabla.direccion('curp')"
+                (ordenar)="tabla.ordenarPor('curp')"
+                >CURP</app-encabezado-ordenable
+              >
+            </th>
+            <th scope="col" [attr.aria-sort]="tabla.ariaSort('telefono')">
+              <app-encabezado-ordenable
+                [direccion]="tabla.direccion('telefono')"
+                (ordenar)="tabla.ordenarPor('telefono')"
+                >Teléfono</app-encabezado-ordenable
+              >
+            </th>
+            <th
+              scope="col"
+              class="hidden 2xl:table-cell"
+              [attr.aria-sort]="tabla.ariaSort('ciudad')"
+            >
+              <app-encabezado-ordenable
+                [direccion]="tabla.direccion('ciudad')"
+                (ordenar)="tabla.ordenarPor('ciudad')"
+                >Ciudad</app-encabezado-ordenable
+              >
+            </th>
+            <th scope="col" class="text-right" [attr.aria-sort]="tabla.ariaSort('prestamos')">
+              <app-encabezado-ordenable
+                [direccion]="tabla.direccion('prestamos')"
+                [alDerecha]="true"
+                (ordenar)="tabla.ordenarPor('prestamos')"
+                >Préstamos</app-encabezado-ordenable
+              >
+            </th>
+            <th scope="col" class="text-right" [attr.aria-sort]="tabla.ariaSort('saldo')">
+              <app-encabezado-ordenable
+                [direccion]="tabla.direccion('saldo')"
+                [alDerecha]="true"
+                (ordenar)="tabla.ordenarPor('saldo')"
+                >Saldo pendiente</app-encabezado-ordenable
+              >
+            </th>
+            <th scope="col" [attr.aria-sort]="tabla.ariaSort('estado')">
+              <app-encabezado-ordenable
+                [direccion]="tabla.direccion('estado')"
+                (ordenar)="tabla.ordenarPor('estado')"
+                >Estado</app-encabezado-ordenable
+              >
+            </th>
             <th scope="col"><span class="sr-only">Acciones</span></th>
           </tr>
         </thead>
         <tbody>
-          @for (fila of filas(); track fila.cliente.id) {
+          @for (fila of tabla.pagina().elementos; track fila.cliente.id) {
             <tr
               class="hover:bg-accent [&>td]:border-b [&>td]:px-3 [&>td]:py-3.5 [&>td]:whitespace-nowrap last:[&>td]:border-b-0 [&>td:first-child]:pl-4.5 [&>td:last-child]:pr-4.5"
             >
@@ -186,19 +234,28 @@
         </p>
       </div>
     }
-    <div
-      class="text-muted-foreground flex items-center justify-between gap-3 border-t px-4.5 py-3.5 text-[13px]"
-    >
-      <span>Mostrando {{ filas().length }} de {{ total() }} clientes</span>
+    <div class="flex flex-wrap items-center gap-3 border-t px-4.5 py-2.5">
+      <app-paginador
+        class="flex-1"
+        [pagina]="tabla.pagina()"
+        sustantivo="clientes"
+        (cambiar)="tabla.irA($event)"
+      />
       @if (servicio.cargando()) {
-        <span>Actualizando…</span>
+        <span class="text-muted-foreground text-[13px]">Actualizando…</span>
       }
     </div>
   </section>
 
   <!-- Teléfono: tarjetas -->
   <section class="grid grid-cols-1 gap-3 lg:hidden" aria-label="Lista de clientes">
-    @for (fila of filas(); track fila.cliente.id) {
+    <app-orden-movil
+      campo="orden-clientes"
+      [columnas]="columnas"
+      [orden]="tabla.orden()"
+      (cambiar)="ordenarMovil($event)"
+    />
+    @for (fila of tabla.pagina().elementos; track fila.cliente.id) {
       <article class="tarjeta p-4">
         <div class="flex items-center gap-3">
           <span
@@ -281,9 +338,12 @@
         </p>
       </div>
     }
-    <p class="text-muted-foreground mt-1 text-center text-[13px]">
-      Mostrando {{ filas().length }} de {{ total() }} clientes
-    </p>
+    <app-paginador
+      class="mt-1"
+      [pagina]="tabla.pagina()"
+      sustantivo="clientes"
+      (cambiar)="tabla.irA($event)"
+    />
   </section>
 }
 

@@ -1,8 +1,6 @@
 import type { Routes } from '@angular/router';
 import { requiereSesion, soloInvitados } from '@/core/auth/auth.guard';
 
-const proximamente = () => import('@/features/proximamente').then((m) => m.Proximamente);
-
 export const routes: Routes = [
   {
     path: 'login',
@@ -40,14 +38,12 @@ export const routes: Routes = [
       {
         path: 'cobranza',
         title: 'Cobranza · Credi Express',
-        data: { titulo: 'Cobranza' },
-        loadComponent: proximamente,
+        loadComponent: () => import('@/features/cobranza/cobranza').then((m) => m.Cobranza),
       },
       {
         path: 'reportes',
         title: 'Reportes · Credi Express',
-        data: { titulo: 'Reportes' },
-        loadComponent: proximamente,
+        loadComponent: () => import('@/features/reportes/reportes').then((m) => m.Reportes),
       },
     ],
   },

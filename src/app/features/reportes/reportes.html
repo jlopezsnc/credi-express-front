@@ -1,0 +1,424 @@
+<header>
+  <p class="text-muted-foreground mb-1.5 text-[13px] font-semibold">Operación / Reportes</p>
+  <h1 class="text-[26px] font-extrabold tracking-tight lg:text-[32px]">Reportes</h1>
+  <p class="text-muted-foreground mt-1.5 text-sm">
+    Cobranza por periodo y estado de la cartera. Se exportan a CSV para abrirlos en Excel.
+  </p>
+</header>
+
+<div
+  role="tablist"
+  aria-label="Tipo de reporte"
+  class="bg-muted grid w-full grid-cols-2 gap-1 rounded-xl border p-1 sm:max-w-110"
+>
+  @for (p of pestanas; track p.id) {
+    @let activo = pestana() === p.id;
+    <button
+      type="button"
+      role="tab"
+      class="min-h-10.5 cursor-pointer rounded-[9px] text-sm font-bold"
+      [class]="
+        activo ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
+      "
+      [attr.aria-selected]="activo"
+      (click)="elegirPestana(p.id)"
+    >
+      {{ p.etiqueta }}
+    </button>
+  }
+</div>
+
+@if (pestana() === 'cobranza') {
+  <section class="tarjeta flex flex-col gap-4 p-4 lg:p-5" aria-label="Periodo del reporte">
+    <div
+      role="group"
+      aria-label="Periodos rápidos"
+      class="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 lg:mx-0 lg:flex-wrap lg:px-0 lg:pb-0"
+    >
+      @for (p of periodos; track p.id) {
+        @let activo = periodoElegido() === p.id;
+        <button
+          type="button"
+          [attr.aria-pressed]="activo"
+          class="inline-flex min-h-9 shrink-0 cursor-pointer items-center rounded-full border px-3.5 text-[13px] font-semibold whitespace-nowrap"
+          [class]="
+            activo
+              ? 'bg-foreground text-card border-foreground'
+              : 'bg-card text-muted-foreground hover:text-foreground'
+          "
+          (click)="elegirPeriodo(p.id)"
+        >
+          {{ p.etiqueta }}
+        </button>
+      }
+    </div>
+    <form
+      class="grid grid-cols-1 items-start gap-3 sm:grid-cols-[1fr_1fr_auto]"
+      novalidate
+      (submit)="$event.preventDefault(); consultarCobranza()"
+    >
+      <div>
+        <label class="mb-1.5 block text-[13px] font-bold" for="f-desde">Desde</label>
+        <input
+          id="f-desde"
+          class="entrada"
+          type="date"
+          [max]="hoy"
+          [value]="periodo().desde"
+          [attr.aria-invalid]="!!errorFechas() || null"
+          aria-describedby="f-periodo-ayuda"
+          (input)="cambiarFecha('desde', $event)"
+        />
+      </div>
+      <div>
+        <label class="mb-1.5 block text-[13px] font-bold" for="f-hasta">Hasta</label>
+        <input
+          id="f-hasta"
+          class="entrada"
+          type="date"
+          [value]="periodo().hasta"
+          [attr.aria-invalid]="!!errorFechas() || null"
+          aria-describedby="f-periodo-ayuda"
+          (input)="cambiarFecha('hasta', $event)"
+        />
+      </div>
+      <button
+        type="submit"
+        class="btn-primario sm:mt-6.5"
+        [disabled]="cobranza().cargando || !!errorFechas()"
+      >
+        {{ cobranza().cargando ? 'Consultando…' : 'Consultar' }}
+      </button>
+      <p
+        id="f-periodo-ayuda"
+        class="text-xs sm:col-span-3"
+        [class]="errorFechas() ? 'text-destructive font-semibold' : 'text-muted-foreground'"
+      >
+        {{ errorFechas() || 'Por fecha de registro del pago. Hasta 92 días.' }}
+      </p>
+    </form>
+  </section>
+
+  @if (cobranza().error; as error) {
+    <div
+      role="alert"
+      class="bg-destructive-soft text-destructive flex flex-wrap items-center justify-between gap-3 rounded-lg px-4 py-3 text-sm font-semibold"
+    >
+      {{ error }}
+      <button type="button" class="btn-secundario min-h-9" (click)="consultarCobranza()">
+        Reintentar
+      </button>
+    </div>
+  }
+
+  @if (vistaCobranza(); as v) {
+    <div class="flex flex-wrap items-center justify-between gap-3">
+      <h2 class="text-lg font-extrabold" aria-live="polite">{{ v.titulo }}</h2>
+      <button type="button" class="btn-secundario" (click)="exportarCobranza()">
+        <app-icono nombre="descargar" />
+        Exportar CSV
+      </button>
+    </div>
+
+    <section class="grid grid-cols-2 gap-3 xl:grid-cols-4" aria-label="Totales del periodo">
+      @for (t of v.tarjetas; track t.titulo) {
+        <div class="tarjeta flex min-w-0 flex-col gap-1 px-4 py-3.5 lg:px-5 lg:py-4">
+          <span class="text-muted-foreground text-[13px] font-bold">{{ t.titulo }}</span>
+          <span
+            class="text-base font-extrabold tracking-tight break-words tabular-nums sm:text-[22px]"
+            >{{ t.valor }}</span
+          >
+          <span class="text-muted-foreground text-xs">{{ t.detalle }}</span>
+        </div>
+      }
+    </section>
+
+    <div class="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
+      <section class="tarjeta p-5" aria-labelledby="t-por-dia">
+        <h3 id="t-por-dia" class="text-[15px] font-extrabold">Cobrado por día</h3>
+        <p class="text-muted-foreground mt-0.5 text-xs">Total recibido (importe + recargo).</p>
+        <p class="mt-3 min-h-5 text-[13px] font-semibold tabular-nums" aria-live="polite">
+          {{ detalleDia() }}
+        </p>
+        <svg
+          class="mt-2 block h-auto w-full"
+          role="img"
+          [attr.viewBox]="'0 0 ' + lienzo.ancho + ' ' + lienzo.alto"
+          [attr.aria-label]="'Cobrado por día. ' + detalleDia()"
+        >
+          @for (d of v.dias; track d.dato.fecha; let i = $index) {
+            <g
+              class="group"
+              (mouseenter)="diaActivo.set(i)"
+              (mouseleave)="diaActivo.set(undefined)"
+            >
+              <rect
+                [attr.x]="d.columna.x"
+                y="0"
+                [attr.width]="d.columna.slot"
+                [attr.height]="lienzo.alto"
+                fill="transparent"
+              />
+              @if (d.columna.d) {
+                <path [attr.d]="d.columna.d" class="fill-grafica group-hover:fill-primary" />
+              }
+            </g>
+          }
+          <line
+            x1="0"
+            [attr.y1]="lienzo.alto - 0.5"
+            [attr.x2]="lienzo.ancho"
+            [attr.y2]="lienzo.alto - 0.5"
+            class="stroke-border"
+            stroke-width="1"
+          />
+        </svg>
+        @if (v.dias.length > 0) {
+          <div class="text-muted-foreground mt-1.5 flex justify-between text-[11px]">
+            <span>{{ v.dias[0]?.fecha }}</span>
+            @if (v.dias.length > 1) {
+              <span>{{ v.dias[v.dias.length - 1]?.fecha }}</span>
+            }
+          </div>
+        }
+        <details class="mt-3">
+          <summary class="text-primary-ink cursor-pointer text-[13px] font-bold">
+            Ver como tabla
+          </summary>
+          <table class="mt-2 w-full border-collapse text-[13px]">
+            <thead>
+              <tr
+                class="text-muted-foreground text-left text-[11px] font-bold tracking-wider uppercase [&>th]:border-b [&>th]:py-2"
+              >
+                <th scope="col">Día</th>
+                <th scope="col">Pagos</th>
+                <th scope="col" class="text-right">Total recibido</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (d of v.dias; track d.dato.fecha) {
+                <tr class="tabular-nums [&>td]:border-b [&>td]:py-1.5 last:[&>td]:border-b-0">
+                  <td>{{ d.fecha }}</td>
+                  <td>{{ d.dato.operaciones }}</td>
+                  <td class="text-right font-bold">{{ d.total }}</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </details>
+      </section>
+
+      <section class="tarjeta p-5" aria-labelledby="t-por-metodo">
+        <h3 id="t-por-metodo" class="text-[15px] font-extrabold">Por método de pago</h3>
+        <dl class="mt-3 flex flex-col">
+          @for (m of v.metodos; track m.metodo) {
+            <div class="flex items-center justify-between gap-3 border-b py-2.5 last:border-b-0">
+              <dt>
+                <span class="block text-sm font-bold">{{ m.metodo }}</span>
+                <span class="text-muted-foreground text-xs">{{ m.operaciones }}</span>
+              </dt>
+              <dd class="text-sm font-extrabold tabular-nums">{{ m.total }}</dd>
+            </div>
+          }
+        </dl>
+      </section>
+    </div>
+
+    <section class="tarjeta overflow-hidden" aria-label="Pagos del periodo">
+      <div class="overflow-x-auto">
+        <table class="w-full border-collapse text-sm">
+          <thead>
+            <tr
+              class="bg-muted text-muted-foreground text-left text-xs font-bold tracking-wider uppercase [&>th]:border-b [&>th]:px-3 [&>th]:py-3 [&>th]:whitespace-nowrap [&>th:first-child]:pl-4.5 [&>th:last-child]:pr-4.5"
+            >
+              <th scope="col">Folio</th>
+              <th scope="col">Registro</th>
+              <th scope="col">Cliente</th>
+              <th scope="col">Pago</th>
+              <th scope="col">Método</th>
+              <th scope="col" class="text-right">Total recibido</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (o of v.operaciones; track o.folio) {
+              <tr
+                class="[&>td]:border-b [&>td]:px-3 [&>td]:py-3 [&>td]:whitespace-nowrap last:[&>td]:border-b-0 [&>td:first-child]:pl-4.5 [&>td:last-child]:pr-4.5"
+                [class.text-muted-foreground]="o.cancelado"
+              >
+                <td class="font-mono text-[13px]">{{ o.folio }}</td>
+                <td class="tabular-nums">{{ o.fecha }}</td>
+                <td class="font-bold">{{ o.cliente }}</td>
+                <td>
+                  <div class="font-semibold">{{ o.pago }}</div>
+                  <div class="text-muted-foreground mt-0.5 text-xs">{{ o.tipo }}</div>
+                </td>
+                <td>{{ o.metodo }}</td>
+                <td class="text-right tabular-nums">
+                  <span class="font-extrabold" [class.line-through]="o.cancelado">{{
+                    o.total
+                  }}</span>
+                  @if (o.cancelado) {
+                    <span
+                      class="bg-neutro-soft text-neutro ml-2 rounded-full px-2 py-0.5 text-xs font-bold"
+                      >Cancelado</span
+                    >
+                  }
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+      @if (v.operaciones.length === 0) {
+        <div class="px-6 py-12 text-center">
+          <p class="text-base font-bold">Sin pagos en el periodo</p>
+          <p class="text-muted-foreground mt-1.5 text-sm">Prueba con otro rango de fechas.</p>
+        </div>
+      }
+      <div class="text-muted-foreground border-t px-4.5 py-3.5 text-[13px]">{{ v.pie }}</div>
+    </section>
+  } @else if (cobranza().cargando) {
+    <div class="tarjeta text-muted-foreground px-6 py-12 text-center text-sm" aria-busy="true">
+      Generando reporte…
+    </div>
+  }
+} @else {
+  @if (cartera().error; as error) {
+    <div
+      role="alert"
+      class="bg-destructive-soft text-destructive flex flex-wrap items-center justify-between gap-3 rounded-lg px-4 py-3 text-sm font-semibold"
+    >
+      {{ error }}
+      <button type="button" class="btn-secundario min-h-9" (click)="consultarCartera()">
+        Reintentar
+      </button>
+    </div>
+  }
+
+  @if (vistaCartera(); as v) {
+    <div class="flex flex-wrap items-center justify-between gap-3">
+      <h2 class="text-lg font-extrabold">Cartera al {{ v.fecha }}</h2>
+      <div class="flex gap-2">
+        <button
+          type="button"
+          class="btn-secundario"
+          [disabled]="cartera().cargando"
+          (click)="consultarCartera()"
+        >
+          {{ cartera().cargando ? 'Actualizando…' : 'Actualizar' }}
+        </button>
+        <button type="button" class="btn-secundario" (click)="exportarCartera()">
+          <app-icono nombre="descargar" />
+          Exportar CSV
+        </button>
+      </div>
+    </div>
+
+    <section class="grid grid-cols-2 gap-3 xl:grid-cols-4" aria-label="Totales de la cartera">
+      @for (t of v.tarjetas; track t.titulo) {
+        <div class="tarjeta flex min-w-0 flex-col gap-1 px-4 py-3.5 lg:px-5 lg:py-4">
+          <span class="text-[13px] font-bold" [class]="t.clase">{{ t.titulo }}</span>
+          <span
+            class="text-base font-extrabold tracking-tight break-words tabular-nums sm:text-[22px]"
+            >{{ t.valor }}</span
+          >
+          <span class="text-muted-foreground text-xs">{{ t.detalle }}</span>
+        </div>
+      }
+    </section>
+
+    <section class="tarjeta p-5" aria-labelledby="t-antiguedad">
+      <h3 id="t-antiguedad" class="text-[15px] font-extrabold">Antigüedad del saldo vencido</h3>
+      <p class="text-muted-foreground mt-0.5 text-xs">Por días de atraso de cada cuota.</p>
+      <ul class="mt-4 flex flex-col gap-3">
+        @for (a of v.antiguedad; track a.dato.etiqueta) {
+          <li
+            class="grid grid-cols-[96px_minmax(0,1fr)] items-center gap-3 sm:grid-cols-[120px_minmax(0,1fr)]"
+          >
+            <span class="text-muted-foreground text-[13px] font-semibold">{{
+              a.dato.etiqueta
+            }}</span>
+            <span class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-2.5">
+              <svg
+                class="block h-5 w-full max-w-100 shrink"
+                preserveAspectRatio="xMinYMid meet"
+                [attr.viewBox]="'0 0 ' + barra.largo + ' ' + barra.grueso"
+                aria-hidden="true"
+              >
+                @if (a.d) {
+                  <path [attr.d]="a.d" class="fill-grafica" />
+                }
+              </svg>
+              <span class="shrink-0 text-[13px] whitespace-nowrap tabular-nums">
+                <span class="font-extrabold">{{ a.saldo }}</span>
+                <span class="text-muted-foreground"> · {{ a.cuotas }}</span>
+              </span>
+            </span>
+          </li>
+        }
+      </ul>
+    </section>
+
+    <section class="tarjeta overflow-hidden" aria-label="Clientes con atraso">
+      <div class="overflow-x-auto">
+        <table class="w-full border-collapse text-sm">
+          <thead>
+            <tr
+              class="bg-muted text-muted-foreground text-left text-xs font-bold tracking-wider uppercase [&>th]:border-b [&>th]:px-3 [&>th]:py-3 [&>th]:whitespace-nowrap [&>th:first-child]:pl-4.5 [&>th:last-child]:pr-4.5"
+            >
+              <th scope="col">Cliente</th>
+              <th scope="col">Atraso</th>
+              <th scope="col">Cuotas vencidas</th>
+              <th scope="col" class="text-right">Saldo vencido</th>
+              <th scope="col" class="text-right">Saldo total</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (c of v.clientes; track c.id) {
+              <tr
+                class="[&>td]:border-b [&>td]:px-3 [&>td]:py-3 [&>td]:whitespace-nowrap last:[&>td]:border-b-0 [&>td:first-child]:pl-4.5 [&>td:last-child]:pr-4.5"
+              >
+                <td>
+                  <div class="flex items-center gap-3">
+                    <span
+                      class="inline-flex size-9.5 shrink-0 items-center justify-center rounded-full text-[13px] font-extrabold"
+                      [class]="c.avatar"
+                    >
+                      {{ c.iniciales }}
+                    </span>
+                    <div>
+                      <div class="font-bold">{{ c.nombre }}</div>
+                      <div class="text-muted-foreground mt-0.5 text-xs tabular-nums">
+                        {{ c.telefono }}
+                      </div>
+                    </div>
+                  </div>
+                </td>
+                <td>
+                  <span
+                    class="bg-atraso-soft text-atraso inline-flex rounded-full px-2.5 py-1 text-xs font-bold"
+                    >{{ c.atraso }}</span
+                  >
+                  <div class="text-muted-foreground mt-1 text-xs">Desde {{ c.desde }}</div>
+                </td>
+                <td class="tabular-nums">{{ c.cuotas }}</td>
+                <td class="text-right font-extrabold tabular-nums">{{ c.vencido }}</td>
+                <td class="text-right tabular-nums">{{ c.total }}</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+      @if (v.clientes.length === 0) {
+        <div class="px-6 py-12 text-center">
+          <p class="text-base font-bold">Sin atrasos</p>
+          <p class="text-muted-foreground mt-1.5 text-sm">Ningún cliente tiene cuotas vencidas.</p>
+        </div>
+      }
+    </section>
+  } @else if (cartera().cargando) {
+    <div class="tarjeta text-muted-foreground px-6 py-12 text-center text-sm" aria-busy="true">
+      Generando reporte…
+    </div>
+  }
+}

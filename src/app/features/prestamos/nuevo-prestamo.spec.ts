@@ -3,6 +3,7 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { type ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { errorInterceptor } from '@/core/api/error.interceptor';
+import { AvisosService } from '@/core/ui/avisos.service';
 import type { ClienteRespuesta } from '@/features/clientes/clientes.service';
 import { NuevoPrestamo } from '@/features/prestamos/nuevo-prestamo';
 import type { PeticionPrestamo } from '@/features/prestamos/prestamos.service';
@@ -177,6 +178,48 @@ describe('NuevoPrestamo', () => {
       'Prestamo generado correctamente',
     );
     expect(pantalla.textContent).toContain('Se generaron 8 plazos de pago');
+  });
+
+  describe('Imprimir simulación', () => {
+    afterEach(() => {
+      vi.restoreAllMocks();
+    });
+
+    function hoja(): string {
+      return pantalla.querySelector('app-hoja-simulacion')?.textContent.replace(/\s+/g, ' ') ?? '';
+    }
+
+    it('pide los datos del cálculo antes de imprimir', async () => {
+      const imprimir = vi.spyOn(window, 'print').mockImplementation(() => undefined);
+      boton('Imprimir simulación').click();
+      await fixture.whenStable();
+      expect(imprimir).not.toHaveBeenCalled();
+      expect(TestBed.inject(AvisosService).aviso()?.mensaje).toContain(
+        'para imprimir la simulación',
+      );
+    });
+
+    it('imprime sin cliente, con el calendario completo y sin la fórmula', async () => {
+      const imprimir = vi.spyOn(window, 'print').mockImplementation(() => undefined);
+      escribir('#f-monto', '6000');
+      await fixture.whenStable();
+      boton('Imprimir simulación').click();
+      expect(imprimir).toHaveBeenCalledOnce();
+
+      expect(hoja()).toContain('Simulación de préstamo');
+      expect(hoja()).toContain('$680.00 MXN');
+      expect(hoja()).toContain('$8,160.00 MXN');
+      // En pantalla se ven 5 pagos; en la hoja, los 12.
+      expect(pantalla.querySelectorAll('app-hoja-simulacion tbody tr')).toHaveLength(12);
+      expect(hoja()).not.toContain('Interés =');
+      expect(resumen()).toContain('Interés =');
+    });
+
+    it('pone el nombre del cliente cuando ya está elegido', async () => {
+      boton('Elegir a María Fernanda López Ruiz').click();
+      await fixture.whenStable();
+      expect(hoja()).toContain('Cliente: María Fernanda López Ruiz');
+    });
   });
 
   it('muestra el error del back sin cerrar la confirmación', async () => {

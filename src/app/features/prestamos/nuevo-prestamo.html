@@ -1,4 +1,4 @@
-<header>
+<header class="print:hidden">
   <p class="text-muted-foreground mb-1.5 text-[13px] font-semibold">
     Operación /
     <a routerLink="/prestamos" class="hover:text-foreground underline-offset-2 hover:underline"
@@ -12,7 +12,7 @@
   </p>
 </header>
 
-<div class="grid grid-cols-1 items-start gap-6 xl:grid-cols-[minmax(0,1fr)_400px]">
+<div class="grid grid-cols-1 items-start gap-6 xl:grid-cols-[minmax(0,1fr)_400px] print:hidden">
   <form
     class="tarjeta divide-border divide-y"
     novalidate
@@ -410,17 +410,32 @@
         }
       </div>
 
-      <button
-        type="button"
-        class="btn-primario min-h-13 w-full text-[15px]"
-        (click)="intentarGenerar()"
-      >
-        <app-icono nombre="palomita" />
-        Generar préstamo
-      </button>
+      <div class="flex flex-col gap-2.5">
+        <button
+          type="button"
+          class="btn-primario min-h-13 w-full text-[15px]"
+          (click)="intentarGenerar()"
+        >
+          <app-icono nombre="palomita" />
+          Generar préstamo
+        </button>
+        <button
+          type="button"
+          class="btn-secundario min-h-13 w-full text-[15px]"
+          (click)="imprimirSimulacion()"
+        >
+          <app-icono nombre="imprimir" />
+          Imprimir simulación
+        </button>
+        <p class="text-muted-foreground text-center text-xs">
+          Hoja para el cliente con el pago por cuota y el calendario. No necesita cliente elegido.
+        </p>
+      </div>
     </div>
   </aside>
 </div>
+
+<app-hoja-simulacion [simulacion]="simulacion()" />
 
 @if (confirmando()) {
   <dialog

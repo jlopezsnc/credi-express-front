@@ -1,13 +1,12 @@
-import { HttpClient } from '@angular/common/http';
-import { computed, inject, Injectable, signal } from '@angular/core';
+import { HttpClient, type HttpResourceRef } from '@angular/common/http';
+import { inject, Injectable, type Signal } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import { apiUrl, type RespuestaApi } from '@/core/api/api';
-import { mensajeDeError } from '@/core/api/api-error';
-import { hoyIso } from '@/features/prestamos/calculo-prestamo';
-import {
-  agruparPrestamos,
-  type CuotaRespuesta,
-  type Prestamo,
+import { recursoApi } from '@/core/api/recurso-api';
+import type {
+  ConsultaPrestamos,
+  PaginaPrestamos,
+  PrestamoDetalle,
 } from '@/features/prestamos/prestamo';
 
 const BASE = '/operaciones-prestamos';
@@ -39,47 +38,35 @@ export interface PrestamoGenerado {
   resultado: string;
 }
 
-interface EstadoLista {
-  cargando: boolean;
-  error: string | undefined;
-  prestamos: Prestamo[];
-}
-
 @Injectable({ providedIn: 'root' })
 export class PrestamosService {
   private readonly http = inject(HttpClient);
-  private readonly estado = signal<EstadoLista>({
-    cargando: false,
-    error: undefined,
-    prestamos: [],
-  });
 
-  readonly prestamos = computed(() => this.estado().prestamos);
-  readonly cargando = computed(() => this.estado().cargando);
-  readonly error = computed(() => this.estado().error);
+  /**
+   * Lista paginada que se vuelve a pedir sola cuando cambia `consulta` (y cancela la anterior).
+   * Crear en un contexto de inyección (campo del componente).
+   */
+  lista(consulta: Signal<ConsultaPrestamos>): HttpResourceRef<PaginaPrestamos | undefined> {
+    return recursoApi<PaginaPrestamos>(() => {
+      const c = consulta();
+      const params: Record<string, string | number> = {
+        filtro: c.filtro,
+        orden: c.orden,
+        direccion: c.direccion,
+        pagina: c.pagina,
+        tamano: c.tamano,
+      };
+      if (c.busqueda.trim()) params['busqueda'] = c.busqueda.trim();
+      return { url: apiUrl(`${BASE}/prestamos`), params };
+    });
+  }
 
-  async cargar(): Promise<void> {
-    this.estado.update((e) => ({ ...e, cargando: true, error: undefined }));
-    try {
-      // Hoy llega un arreglo suelto; se acepta también el sobre de las demás respuestas.
-      const respuesta = await firstValueFrom(
-        this.http.get<CuotaRespuesta[] | RespuestaApi<CuotaRespuesta[] | null> | null>(
-          apiUrl(`${BASE}/buscar-ep/todo`),
-        ),
-      );
-      const cuotas = Array.isArray(respuesta) ? respuesta : (respuesta?.objetoResponse ?? []);
-      this.estado.set({
-        cargando: false,
-        error: undefined,
-        prestamos: agruparPrestamos(cuotas, hoyIso()),
-      });
-    } catch (error) {
-      this.estado.update((e) => ({
-        ...e,
-        cargando: false,
-        error: mensajeDeError(error, 'No se pudo cargar la lista de préstamos.'),
-      }));
-    }
+  /** Calendario de un préstamo; sin id no pide nada. */
+  detalle(idPrestamo: Signal<number | undefined>): HttpResourceRef<PrestamoDetalle | undefined> {
+    return recursoApi<PrestamoDetalle>(() => {
+      const id = idPrestamo();
+      return id === undefined ? undefined : apiUrl(`${BASE}/prestamos/${String(id)}`);
+    });
   }
 
   /** Genera el préstamo y su calendario de pagos. Devuelve el mensaje del back. */

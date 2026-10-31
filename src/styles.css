@@ -10,8 +10,10 @@
  * Angular los inyecta como <style> en línea y la CSP (`style-src 'self'`) los bloquearía.
  *
  * Paleta aprobada en el prototipo de Clientes. La clase `.dark` en <html> la pone TemaService.
+ * `.papel` vuelve a la paleta clara lo que se imprime, aunque la pantalla esté en tema oscuro.
  */
-:root {
+:root,
+.papel {
   color-scheme: light;
   --radius: 0.625rem;
   --background: #f4f6f6;
@@ -34,11 +36,15 @@
   --ring: #0f766e;
   --overlay: rgb(8 18 18 / 45%);
   --sombra: 0 1px 2px rgb(16 32 31 / 5%), 0 10px 30px rgb(16 32 31 / 6%);
-  /* Estados del cliente */
+  /* Estados del cliente y de las cuotas */
   --ok: #14632f;
   --ok-soft: #dcf2e5;
   --atraso: #8f340e;
   --atraso-soft: #fce6d6;
+  --aviso: #7a4b00;
+  --aviso-soft: #fef4dc;
+  /* Barras de las gráficas (validadas contra la superficie con la guía de visualización) */
+  --grafica: #0d9488;
   --neutro: #485756;
   --neutro-soft: #ebefef;
   /* Avatares */
@@ -80,6 +86,9 @@
   --ok-soft: #123222;
   --atraso: #fdba74;
   --atraso-soft: #3a2010;
+  --aviso: #fcd34d;
+  --aviso-soft: #3a2e0c;
+  --grafica: #1fa898;
   --neutro: #a9b8b6;
   --neutro-soft: #1b2828;
   --av0: #123532;
@@ -128,6 +137,9 @@
   --color-ok-soft: var(--ok-soft);
   --color-atraso: var(--atraso);
   --color-atraso-soft: var(--atraso-soft);
+  --color-aviso: var(--aviso);
+  --color-aviso-soft: var(--aviso-soft);
+  --color-grafica: var(--grafica);
   --color-neutro: var(--neutro);
   --color-neutro-soft: var(--neutro-soft);
   --color-av0: var(--av0);
@@ -147,11 +159,15 @@
     @apply border-border outline-ring/50;
   }
   body {
-    @apply bg-background text-foreground antialiased;
+    @apply bg-background text-foreground antialiased print:bg-white;
   }
   :focus-visible {
     @apply outline-primary outline-2 outline-offset-2;
   }
+}
+
+@page {
+  margin: 14mm;
 }
 
 /* Piezas que se repiten en todas las pantallas. */

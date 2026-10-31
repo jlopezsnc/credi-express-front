@@ -1,41 +1,79 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { formatearFecha, formatearMoneda, iniciales, normalizarTexto } from '@/core/format';
+import { mensajeDeError } from '@/core/api/api-error';
+import { formatearFecha, formatearMoneda, iniciales } from '@/core/format';
+import { conRetraso } from '@/core/senales';
+import { EncabezadoOrdenable } from '@/core/tabla/encabezado-ordenable';
+import { type ColumnaOrden, OrdenMovil } from '@/core/tabla/orden-movil';
+import { Paginador } from '@/core/tabla/paginador';
+import type { Orden } from '@/core/tabla/tabla';
+import { type PaginaApi, TablaRemota } from '@/core/tabla/tabla-remota';
 import { claseAvatar } from '@/core/ui/avatar';
 import { DialogoModal } from '@/core/ui/dialogo-modal';
 import { Icono } from '@/core/ui/icono';
-import { aPesos } from '@/features/prestamos/calculo-prestamo';
-import type { EstadoCuota, EstadoPrestamo, Prestamo } from '@/features/prestamos/prestamo';
+import type {
+  ConsultaPrestamos,
+  EstatusCuota,
+  FiltroPrestamos,
+  OrdenPrestamos,
+  PaginaPrestamos,
+  PrestamoResumen,
+  SituacionPrestamo,
+} from '@/features/prestamos/prestamo';
 import { PrestamosService } from '@/features/prestamos/prestamos.service';
 
-type Filtro = 'activos' | 'atraso' | 'liquidados' | 'todos';
+const POR_PAGINA = 10;
 
-const FILTROS: readonly { id: Filtro; etiqueta: string; aplica: (p: Prestamo) => boolean }[] = [
-  { id: 'activos', etiqueta: 'Activos', aplica: (p) => p.estado !== 'liquidado' },
-  { id: 'atraso', etiqueta: 'Con atraso', aplica: (p) => p.estado === 'atraso' },
-  { id: 'liquidados', etiqueta: 'Liquidados', aplica: (p) => p.estado === 'liquidado' },
-  { id: 'todos', etiqueta: 'Todos', aplica: () => true },
+const FILTROS: readonly {
+  id: FiltroPrestamos;
+  etiqueta: string;
+  cantidad: (c: PaginaPrestamos['contadores']) => number;
+}[] = [
+  { id: 'ACTIVOS', etiqueta: 'Activos', cantidad: (c) => c.activos },
+  { id: 'CON_ATRASO', etiqueta: 'Con atraso', cantidad: (c) => c.conAtraso },
+  { id: 'LIQUIDADOS', etiqueta: 'Liquidados', cantidad: (c) => c.liquidados },
+  { id: 'TODOS', etiqueta: 'Todos', cantidad: (c) => c.todos },
 ];
 
-const ESTADOS_PRESTAMO: Record<EstadoPrestamo, { texto: string; clase: string }> = {
-  corriente: { texto: 'Al corriente', clase: 'bg-ok-soft text-ok' },
-  atraso: { texto: 'Con atraso', clase: 'bg-atraso-soft text-atraso' },
-  liquidado: { texto: 'Liquidado', clase: 'bg-neutro-soft text-neutro' },
-};
+type Columna = 'cliente' | 'pagos' | 'cuota' | 'total' | 'saldo' | 'proximo' | 'estado';
 
-const ESTADOS_CUOTA: Record<EstadoCuota, { texto: string; clase: string }> = {
-  pagada: { texto: 'Pagada', clase: 'bg-ok-soft text-ok' },
-  vencida: { texto: 'Vencida', clase: 'bg-atraso-soft text-atraso' },
-  pendiente: { texto: 'Pendiente', clase: 'bg-neutro-soft text-neutro' },
-};
+/** Columnas ordenables y la columna del back que corresponde a cada una. */
+const COLUMNAS: readonly (ColumnaOrden & { id: Columna; api: OrdenPrestamos })[] = [
+  { id: 'cliente', etiqueta: 'Cliente', api: 'CLIENTE' },
+  { id: 'pagos', etiqueta: 'Pagos hechos', api: 'PAGOS' },
+  { id: 'cuota', etiqueta: 'Cuota', api: 'CUOTA' },
+  { id: 'total', etiqueta: 'Total', api: 'TOTAL' },
+  { id: 'saldo', etiqueta: 'Saldo pendiente', api: 'SALDO' },
+  { id: 'proximo', etiqueta: 'Próximo pago', api: 'PROXIMO_PAGO' },
+  { id: 'estado', etiqueta: 'Estado', api: 'ESTADO' },
+];
 
-function pesos(centavos: number): string {
-  return formatearMoneda(aPesos(centavos));
+function esColumna(id: string): id is Columna {
+  return COLUMNAS.some((c) => c.id === id);
 }
+
+function columnaApi(columna: Columna): OrdenPrestamos {
+  return COLUMNAS.find((c) => c.id === columna)?.api ?? 'PROXIMO_PAGO';
+}
+
+const ESTADOS_PRESTAMO: Record<SituacionPrestamo, { texto: string; clase: string }> = {
+  AL_CORRIENTE: { texto: 'Al corriente', clase: 'bg-ok-soft text-ok' },
+  CON_ATRASO: { texto: 'Con atraso', clase: 'bg-atraso-soft text-atraso' },
+  LIQUIDADO: { texto: 'Liquidado', clase: 'bg-neutro-soft text-neutro' },
+};
+
+const ESTATUS_CUOTA: Record<EstatusCuota, { texto: string; clase: string }> = {
+  PAGADA: { texto: 'Pagada', clase: 'bg-ok-soft text-ok' },
+  VENCIDA: { texto: 'Vencida', clase: 'bg-atraso-soft text-atraso' },
+  ABONO_PARCIAL: { texto: 'Abono parcial', clase: 'bg-aviso-soft text-aviso' },
+  PENDIENTE: { texto: 'Pendiente', clase: 'bg-neutro-soft text-neutro' },
+};
 
 /** Lo que la tabla y las tarjetas muestran de cada préstamo, ya formateado. */
 interface FilaPrestamo {
-  prestamo: Prestamo;
+  id: number;
+  cliente: string;
+  modalidad: string;
   iniciales: string;
   avatar: string;
   estado: { texto: string; clase: string };
@@ -46,79 +84,127 @@ interface FilaPrestamo {
   proximo: string;
 }
 
-/** Lista de préstamos: búsqueda por cliente, filtros por estado y calendario de cada préstamo. */
+function fila(p: PrestamoResumen): FilaPrestamo {
+  return {
+    id: p.idPrestamo,
+    cliente: p.cliente.nombreCompleto,
+    modalidad: p.modalidad.descripcion,
+    iniciales: iniciales(p.cliente.nombreCompleto),
+    avatar: claseAvatar(p.cliente.idCliente),
+    estado: ESTADOS_PRESTAMO[p.estado],
+    avance: `${String(p.cuotasPagadas)} de ${String(p.numeroCuotas)}`,
+    cuota: formatearMoneda(p.importeCuota),
+    total: formatearMoneda(p.totalPagar),
+    saldo: Number(p.saldoPendiente) > 0 ? formatearMoneda(p.saldoPendiente) : '—',
+    proximo: p.proximoPago ? formatearFecha(p.proximoPago) : '—',
+  };
+}
+
+/**
+ * Lista de préstamos: filtros, búsqueda, orden y páginas los resuelve el back; el estado, el
+ * próximo pago, los pagos hechos y el saldo vienen calculados. Calendario de cada préstamo.
+ */
 @Component({
   selector: 'app-prestamos',
-  imports: [DialogoModal, Icono, RouterLink],
+  imports: [DialogoModal, EncabezadoOrdenable, Icono, OrdenMovil, Paginador, RouterLink],
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { class: 'flex flex-col gap-6' },
   templateUrl: './prestamos.html',
 })
 export class Prestamos {
-  protected readonly servicio = inject(PrestamosService);
+  private readonly servicio = inject(PrestamosService);
 
+  protected readonly columnas = COLUMNAS;
   protected readonly busqueda = signal('');
-  protected readonly filtro = signal<Filtro>('activos');
-  protected readonly enDetalle = signal<Prestamo | undefined>(undefined);
+  protected readonly filtro = signal<FiltroPrestamos>('ACTIVOS');
+  private readonly busquedaConsulta = conRetraso(this.busqueda);
 
-  protected readonly total = computed(() => this.servicio.prestamos().length);
-  protected readonly cargandoInicial = computed(
-    () => this.servicio.cargando() && this.total() === 0,
-  );
-
-  protected readonly filtros = computed(() =>
-    FILTROS.map((f) => ({
-      id: f.id,
-      etiqueta: f.etiqueta,
-      cantidad: this.servicio.prestamos().filter(f.aplica).length,
-    })),
-  );
-
-  protected readonly filas = computed<FilaPrestamo[]>(() => {
-    const filtro = FILTROS.find((f) => f.id === this.filtro());
-    const consulta = normalizarTexto(this.busqueda().trim());
-    return this.servicio
-      .prestamos()
-      .filter((p) => filtro?.aplica(p) ?? true)
-      .filter((p) => consulta === '' || normalizarTexto(p.cliente).includes(consulta))
-      .map((p) => ({
-        prestamo: p,
-        iniciales: iniciales(p.cliente),
-        avatar: claseAvatar(p.idCliente),
-        estado: ESTADOS_PRESTAMO[p.estado],
-        avance: `${String(p.pagadas)} de ${String(p.cuotas.length)}`,
-        cuota: p.cuotas[0] ? pesos(p.cuotas[0].importeCent) : '—',
-        total: pesos(p.totalCent),
-        saldo: p.saldoCent > 0 ? pesos(p.saldoCent) : '—',
-        proximo: p.proxima ? formatearFecha(p.proxima.fechaVencimiento) : '—',
-      }));
+  protected readonly tabla: TablaRemota<Columna, FilaPrestamo> = new TablaRemota({
+    ordenInicial: { columna: 'proximo', direccion: 'asc' },
+    reiniciarCon: () => [this.filtro(), this.busquedaConsulta()],
+    respuesta: () => this.paginaFilas(),
   });
 
-  protected readonly detalle = computed(() => {
-    const p = this.enDetalle();
-    if (!p) return undefined;
+  private readonly consulta = computed<ConsultaPrestamos>(() => {
+    const { orden, pagina } = this.tabla.peticion();
     return {
-      prestamo: p,
-      estado: ESTADOS_PRESTAMO[p.estado],
-      total: pesos(p.totalCent),
-      saldo: pesos(p.saldoCent),
-      vencidas: p.vencidas,
-      cuotas: p.cuotas.map((c) => ({
-        id: c.id,
-        numero: c.numero,
-        vence: formatearFecha(c.fechaVencimiento),
-        importe: pesos(c.importeCent),
-        pagada: c.fechaPago ? formatearFecha(c.fechaPago) : '',
-        estado: ESTADOS_CUOTA[c.estado],
-      })),
+      filtro: this.filtro(),
+      busqueda: this.busquedaConsulta(),
+      orden: columnaApi(orden.columna),
+      direccion: orden.direccion === 'asc' ? 'ASC' : 'DESC',
+      pagina,
+      tamano: POR_PAGINA,
     };
   });
 
-  constructor() {
-    void this.servicio.cargar();
-  }
+  protected readonly lista = this.servicio.lista(this.consulta);
+
+  private readonly paginaFilas = computed<PaginaApi<FilaPrestamo> | undefined>(() => {
+    if (!this.lista.hasValue()) return undefined;
+    const pagina = this.lista.value();
+    return { ...pagina, contenido: pagina.contenido.map(fila) };
+  });
+
+  protected readonly cargandoInicial = computed(
+    () => this.lista.isLoading() && !this.lista.hasValue(),
+  );
+  protected readonly error = computed(() => {
+    const error = this.lista.error();
+    return error ? mensajeDeError(error, 'No se pudo cargar la lista de préstamos.') : '';
+  });
+
+  protected readonly filtros = computed(() => {
+    const contadores = this.lista.hasValue() ? this.lista.value().contadores : undefined;
+    return FILTROS.map((f) => ({
+      id: f.id,
+      etiqueta: f.etiqueta,
+      cantidad: contadores ? f.cantidad(contadores) : 0,
+    }));
+  });
+
+  /** Préstamo cuyo calendario está abierto. */
+  protected readonly enDetalle = signal<number | undefined>(undefined);
+  protected readonly calendario = this.servicio.detalle(this.enDetalle);
+
+  protected readonly detalle = computed(() => {
+    const id = this.enDetalle();
+    if (id === undefined) return undefined;
+    const valor = this.calendario.hasValue() ? this.calendario.value() : undefined;
+    const d = valor?.prestamo.idPrestamo === id ? valor : undefined;
+    const error = this.calendario.error();
+    return {
+      id,
+      cargando: !d && !error,
+      error: error ? mensajeDeError(error, 'No se pudo cargar el calendario.') : '',
+      datos: d && {
+        cliente: d.prestamo.cliente.nombreCompleto,
+        subtitulo: `Préstamo #${String(id)} · ${String(d.prestamo.numeroCuotas)} pagos · ${d.prestamo.modalidad.descripcion}`,
+        estado: ESTADOS_PRESTAMO[d.prestamo.estado],
+        total: formatearMoneda(d.prestamo.totalPagar),
+        saldo: formatearMoneda(d.prestamo.saldoPendiente),
+        vencidas: d.prestamo.cuotasVencidas,
+        cuotas: d.cuotas.map((c) => ({
+          id: c.idCuota,
+          numero: c.numeroCuota,
+          vence: formatearFecha(c.fechaVencimiento),
+          importe: formatearMoneda(c.importe),
+          saldo: Number(c.saldo) > 0 ? formatearMoneda(c.saldo) : '—',
+          estatus: ESTATUS_CUOTA[c.estatus],
+          detalle: c.fechaPago
+            ? `Pagada el ${formatearFecha(c.fechaPago)}`
+            : Number(c.abonado) > 0
+              ? `Abonado ${formatearMoneda(c.abonado)}`
+              : null,
+        })),
+      },
+    };
+  });
 
   protected alBuscar(evento: Event): void {
     this.busqueda.set((evento.target as HTMLInputElement).value);
+  }
+
+  protected ordenarMovil(orden: Orden<string>): void {
+    if (esColumna(orden.columna)) this.tabla.fijarOrden(orden.columna, orden.direccion);
   }
 }

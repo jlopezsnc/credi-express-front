@@ -19,6 +19,8 @@ const leer = (nombre) => (process.env[nombre] ?? desdeArchivo[nombre] ?? '').tri
 
 const env = {
   apiBaseUrl: leer('NG_APP_API_BASE_URL') || '/api',
+  // Logotipo del recibo. Vacío = logotipo temporal. Debe servirse del mismo dominio (CSP img-src 'self').
+  logoUrl: leer('NG_APP_LOGO_URL'),
   firebase: {
     apiKey: leer('NG_APP_FIREBASE_API_KEY'),
     authDomain: leer('NG_APP_FIREBASE_AUTH_DOMAIN'),

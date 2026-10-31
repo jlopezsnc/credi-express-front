@@ -60,22 +60,20 @@
   <div class="tarjeta text-muted-foreground px-6 py-12 text-center text-sm" aria-busy="true">
     Cargando préstamos…
   </div>
-} @else if (servicio.error() && total() === 0) {
+} @else if (error() && !lista.hasValue()) {
   <div role="alert" class="tarjeta px-6 py-12 text-center">
     <p class="text-base font-bold">No se pudo cargar la lista</p>
-    <p class="text-muted-foreground mt-1.5 text-sm">{{ servicio.error() }}</p>
-    <button type="button" class="btn-secundario mt-4" (click)="servicio.cargar()">
-      Reintentar
-    </button>
+    <p class="text-muted-foreground mt-1.5 text-sm">{{ error() }}</p>
+    <button type="button" class="btn-secundario mt-4" (click)="lista.reload()">Reintentar</button>
   </div>
 } @else {
-  @if (servicio.error(); as error) {
+  @if (error(); as mensaje) {
     <div
       role="alert"
       class="bg-destructive-soft text-destructive flex flex-wrap items-center justify-between gap-3 rounded-lg px-4 py-3 text-sm font-semibold"
     >
-      {{ error }}
-      <button type="button" class="btn-secundario min-h-9" (click)="servicio.cargar()">
+      {{ mensaje }}
+      <button type="button" class="btn-secundario min-h-9" (click)="lista.reload()">
         Reintentar
       </button>
     </div>
@@ -89,18 +87,67 @@
           <tr
             class="bg-muted text-muted-foreground text-left text-xs font-bold tracking-wider uppercase [&>th]:border-b [&>th]:px-3 [&>th]:py-3 [&>th]:whitespace-nowrap [&>th:first-child]:pl-4.5 [&>th:last-child]:pr-4.5"
           >
-            <th scope="col">Cliente</th>
-            <th scope="col">Pagos</th>
-            <th scope="col" class="text-right">Cuota</th>
-            <th scope="col" class="hidden text-right 2xl:table-cell">Total</th>
-            <th scope="col" class="text-right">Saldo pendiente</th>
-            <th scope="col">Próximo pago</th>
-            <th scope="col">Estado</th>
+            <th scope="col" [attr.aria-sort]="tabla.ariaSort('cliente')">
+              <app-encabezado-ordenable
+                [direccion]="tabla.direccion('cliente')"
+                (ordenar)="tabla.ordenarPor('cliente')"
+                >Cliente</app-encabezado-ordenable
+              >
+            </th>
+            <th scope="col" [attr.aria-sort]="tabla.ariaSort('pagos')">
+              <app-encabezado-ordenable
+                [direccion]="tabla.direccion('pagos')"
+                (ordenar)="tabla.ordenarPor('pagos')"
+                >Pagos</app-encabezado-ordenable
+              >
+            </th>
+            <th scope="col" class="text-right" [attr.aria-sort]="tabla.ariaSort('cuota')">
+              <app-encabezado-ordenable
+                [direccion]="tabla.direccion('cuota')"
+                [alDerecha]="true"
+                (ordenar)="tabla.ordenarPor('cuota')"
+                >Cuota</app-encabezado-ordenable
+              >
+            </th>
+            <th
+              scope="col"
+              class="hidden text-right 2xl:table-cell"
+              [attr.aria-sort]="tabla.ariaSort('total')"
+            >
+              <app-encabezado-ordenable
+                [direccion]="tabla.direccion('total')"
+                [alDerecha]="true"
+                (ordenar)="tabla.ordenarPor('total')"
+                >Total</app-encabezado-ordenable
+              >
+            </th>
+            <th scope="col" class="text-right" [attr.aria-sort]="tabla.ariaSort('saldo')">
+              <app-encabezado-ordenable
+                [direccion]="tabla.direccion('saldo')"
+                [alDerecha]="true"
+                (ordenar)="tabla.ordenarPor('saldo')"
+                >Saldo pendiente</app-encabezado-ordenable
+              >
+            </th>
+            <th scope="col" [attr.aria-sort]="tabla.ariaSort('proximo')">
+              <app-encabezado-ordenable
+                [direccion]="tabla.direccion('proximo')"
+                (ordenar)="tabla.ordenarPor('proximo')"
+                >Próximo pago</app-encabezado-ordenable
+              >
+            </th>
+            <th scope="col" [attr.aria-sort]="tabla.ariaSort('estado')">
+              <app-encabezado-ordenable
+                [direccion]="tabla.direccion('estado')"
+                (ordenar)="tabla.ordenarPor('estado')"
+                >Estado</app-encabezado-ordenable
+              >
+            </th>
             <th scope="col"><span class="sr-only">Acciones</span></th>
           </tr>
         </thead>
         <tbody>
-          @for (fila of filas(); track fila.prestamo.id) {
+          @for (fila of tabla.pagina().elementos; track fila.id) {
             <tr
               class="hover:bg-accent [&>td]:border-b [&>td]:px-3 [&>td]:py-3.5 [&>td]:whitespace-nowrap last:[&>td]:border-b-0 [&>td:first-child]:pl-4.5 [&>td:last-child]:pr-4.5"
             >
@@ -113,9 +160,9 @@
                     {{ fila.iniciales }}
                   </span>
                   <div>
-                    <div class="font-bold">{{ fila.prestamo.cliente }}</div>
+                    <div class="font-bold">{{ fila.cliente }}</div>
                     <div class="text-muted-foreground mt-0.5 text-xs">
-                      Préstamo #{{ fila.prestamo.id }} · {{ fila.prestamo.modalidad }}
+                      Préstamo #{{ fila.id }} · {{ fila.modalidad }}
                     </div>
                   </div>
                 </div>
@@ -138,12 +185,9 @@
                   type="button"
                   class="btn-secundario min-h-9 px-3 text-[13px]"
                   [attr.aria-label]="
-                    'Ver calendario del préstamo ' +
-                    fila.prestamo.id +
-                    ' de ' +
-                    fila.prestamo.cliente
+                    'Ver calendario del préstamo ' + fila.id + ' de ' + fila.cliente
                   "
-                  (click)="enDetalle.set(fila.prestamo)"
+                  (click)="enDetalle.set(fila.id)"
                 >
                   <app-icono nombre="cobranza" class="size-4" />
                   Calendario
@@ -154,7 +198,7 @@
         </tbody>
       </table>
     </div>
-    @if (filas().length === 0) {
+    @if (tabla.pagina().total === 0 && !lista.isLoading()) {
       <div class="px-6 py-12 text-center">
         <p class="text-base font-bold">Sin coincidencias</p>
         <p class="text-muted-foreground mt-1.5 text-sm">
@@ -162,19 +206,28 @@
         </p>
       </div>
     }
-    <div
-      class="text-muted-foreground flex items-center justify-between gap-3 border-t px-4.5 py-3.5 text-[13px]"
-    >
-      <span>Mostrando {{ filas().length }} de {{ total() }} préstamos</span>
-      @if (servicio.cargando()) {
-        <span>Actualizando…</span>
+    <div class="flex flex-wrap items-center gap-3 border-t px-4.5 py-2.5">
+      <app-paginador
+        class="flex-1"
+        [pagina]="tabla.pagina()"
+        sustantivo="préstamos"
+        (cambiar)="tabla.irA($event)"
+      />
+      @if (lista.isLoading()) {
+        <span class="text-muted-foreground text-[13px]" aria-live="polite">Actualizando…</span>
       }
     </div>
   </section>
 
   <!-- Teléfono: tarjetas -->
   <section class="grid grid-cols-1 gap-3 lg:hidden" aria-label="Lista de préstamos">
-    @for (fila of filas(); track fila.prestamo.id) {
+    <app-orden-movil
+      campo="orden-prestamos"
+      [columnas]="columnas"
+      [orden]="tabla.orden()"
+      (cambiar)="ordenarMovil($event)"
+    />
+    @for (fila of tabla.pagina().elementos; track fila.id) {
       <article class="tarjeta p-4">
         <div class="flex items-center gap-3">
           <span
@@ -184,9 +237,9 @@
             {{ fila.iniciales }}
           </span>
           <div class="min-w-0 flex-1">
-            <div class="truncate text-[15px] font-bold">{{ fila.prestamo.cliente }}</div>
+            <div class="truncate text-[15px] font-bold">{{ fila.cliente }}</div>
             <div class="text-muted-foreground mt-0.5 text-xs">
-              Préstamo #{{ fila.prestamo.id }} · {{ fila.prestamo.modalidad }}
+              Préstamo #{{ fila.id }} · {{ fila.modalidad }}
             </div>
           </div>
           <span
@@ -217,17 +270,15 @@
         <button
           type="button"
           class="btn-secundario mt-3 w-full px-3 text-[13px]"
-          [attr.aria-label]="
-            'Ver calendario del préstamo ' + fila.prestamo.id + ' de ' + fila.prestamo.cliente
-          "
-          (click)="enDetalle.set(fila.prestamo)"
+          [attr.aria-label]="'Ver calendario del préstamo ' + fila.id + ' de ' + fila.cliente"
+          (click)="enDetalle.set(fila.id)"
         >
           <app-icono nombre="cobranza" class="size-4" />
           Ver calendario
         </button>
       </article>
     }
-    @if (filas().length === 0) {
+    @if (tabla.pagina().total === 0 && !lista.isLoading()) {
       <div class="tarjeta px-5 py-8 text-center">
         <p class="font-bold">Sin coincidencias</p>
         <p class="text-muted-foreground mt-1.5 text-sm">
@@ -235,9 +286,12 @@
         </p>
       </div>
     }
-    <p class="text-muted-foreground mt-1 text-center text-[13px]">
-      Mostrando {{ filas().length }} de {{ total() }} préstamos
-    </p>
+    <app-paginador
+      class="mt-1"
+      [pagina]="tabla.pagina()"
+      sustantivo="préstamos"
+      (cambiar)="tabla.irA($event)"
+    />
   </section>
 }
 
@@ -250,11 +304,12 @@
   >
     <div class="flex items-start justify-between gap-4 px-6 pt-6 pb-2">
       <div class="min-w-0">
-        <h2 id="t-detalle" class="text-xl font-extrabold">{{ d.prestamo.cliente }}</h2>
-        <p class="text-muted-foreground mt-1 text-sm">
-          Préstamo #{{ d.prestamo.id }} · {{ d.prestamo.cuotas.length }} pagos
-          {{ d.prestamo.modalidad.toLowerCase() }}es
-        </p>
+        <h2 id="t-detalle" class="text-xl font-extrabold">
+          {{ d.datos?.cliente ?? 'Préstamo #' + d.id }}
+        </h2>
+        @if (d.datos; as datos) {
+          <p class="text-muted-foreground mt-1 text-sm">{{ datos.subtitulo }}</p>
+        }
       </div>
       <button
         type="button"
@@ -266,66 +321,86 @@
       </button>
     </div>
 
-    <dl class="grid grid-cols-3 gap-3 px-6 py-3 text-sm">
-      <div>
-        <dt class="text-muted-foreground text-xs">Total</dt>
-        <dd class="font-bold tabular-nums">{{ d.total }}</dd>
+    @if (d.datos; as datos) {
+      <dl class="grid grid-cols-3 gap-3 px-6 py-3 text-sm">
+        <div>
+          <dt class="text-muted-foreground text-xs">Total</dt>
+          <dd class="font-bold tabular-nums">{{ datos.total }}</dd>
+        </div>
+        <div>
+          <dt class="text-muted-foreground text-xs">Saldo pendiente</dt>
+          <dd class="font-extrabold tabular-nums">{{ datos.saldo }}</dd>
+        </div>
+        <div>
+          <dt class="text-muted-foreground text-xs">Estado</dt>
+          <dd>
+            <span
+              class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-bold whitespace-nowrap before:size-1.5 before:rounded-full before:bg-current"
+              [class]="datos.estado.clase"
+            >
+              {{ datos.estado.texto }}
+            </span>
+          </dd>
+        </div>
+      </dl>
+      @if (datos.vencidas > 0) {
+        <p
+          class="bg-atraso-soft text-atraso mx-6 mb-1 rounded-lg px-3.5 py-2.5 text-[13px] font-semibold"
+        >
+          {{ datos.vencidas === 1 ? '1 pago vencido' : datos.vencidas + ' pagos vencidos' }} sin
+          cubrir.
+        </p>
+      }
+
+      <div class="px-6 pt-2 pb-6">
+        <table class="w-full border-collapse text-[13px]">
+          <thead>
+            <tr
+              class="text-muted-foreground text-left text-[11px] font-bold tracking-wider uppercase [&>th]:border-b [&>th]:py-2"
+            >
+              <th scope="col">#</th>
+              <th scope="col">Vence</th>
+              <th scope="col" class="text-right">Importe</th>
+              <th scope="col" class="text-right">Saldo</th>
+              <th scope="col" class="pl-3">Estado</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (c of datos.cuotas; track c.id) {
+              <tr class="tabular-nums [&>td]:border-b [&>td]:py-2.25 last:[&>td]:border-b-0">
+                <td class="text-muted-foreground">{{ c.numero }}</td>
+                <td>{{ c.vence }}</td>
+                <td class="text-right font-bold">{{ c.importe }}</td>
+                <td class="text-right">{{ c.saldo }}</td>
+                <td class="pl-3">
+                  <span
+                    class="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-bold whitespace-nowrap"
+                    [class]="c.estatus.clase"
+                    [attr.title]="c.detalle"
+                  >
+                    {{ c.estatus.texto }}
+                  </span>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
       </div>
-      <div>
-        <dt class="text-muted-foreground text-xs">Saldo pendiente</dt>
-        <dd class="font-extrabold tabular-nums">{{ d.saldo }}</dd>
+    } @else if (d.error) {
+      <div role="alert" class="px-6 pt-2 pb-6">
+        <p
+          class="bg-destructive-soft text-destructive rounded-lg px-3.5 py-2.5 text-sm font-semibold"
+        >
+          {{ d.error }}
+        </p>
+        <button type="button" class="btn-secundario mt-3" (click)="calendario.reload()">
+          Reintentar
+        </button>
       </div>
-      <div>
-        <dt class="text-muted-foreground text-xs">Estado</dt>
-        <dd>
-          <span
-            class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-bold whitespace-nowrap before:size-1.5 before:rounded-full before:bg-current"
-            [class]="d.estado.clase"
-          >
-            {{ d.estado.texto }}
-          </span>
-        </dd>
-      </div>
-    </dl>
-    @if (d.vencidas > 0) {
-      <p
-        class="bg-atraso-soft text-atraso mx-6 mb-1 rounded-lg px-3.5 py-2.5 text-[13px] font-semibold"
-      >
-        {{ d.vencidas === 1 ? '1 pago vencido' : d.vencidas + ' pagos vencidos' }} sin registrar.
+    } @else {
+      <p class="text-muted-foreground px-6 pt-2 pb-8 text-sm" aria-busy="true">
+        Cargando calendario…
       </p>
     }
-
-    <div class="px-6 pt-2 pb-6">
-      <table class="w-full border-collapse text-[13px]">
-        <thead>
-          <tr
-            class="text-muted-foreground text-left text-[11px] font-bold tracking-wider uppercase [&>th]:border-b [&>th]:py-2"
-          >
-            <th scope="col">#</th>
-            <th scope="col">Vence</th>
-            <th scope="col" class="text-right">Importe</th>
-            <th scope="col" class="pl-3">Estado</th>
-          </tr>
-        </thead>
-        <tbody>
-          @for (c of d.cuotas; track c.id) {
-            <tr class="tabular-nums [&>td]:border-b [&>td]:py-2.25 last:[&>td]:border-b-0">
-              <td class="text-muted-foreground">{{ c.numero }}</td>
-              <td>{{ c.vence }}</td>
-              <td class="text-right font-bold">{{ c.importe }}</td>
-              <td class="pl-3">
-                <span
-                  class="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-bold whitespace-nowrap"
-                  [class]="c.estado.clase"
-                  [attr.title]="c.pagada ? 'Pagada el ' + c.pagada : null"
-                >
-                  {{ c.estado.texto }}
-                </span>
-              </td>
-            </tr>
-          }
-        </tbody>
-      </table>
-    </div>
   </dialog>
 }

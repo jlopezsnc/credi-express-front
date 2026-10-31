@@ -1,3 +1,4 @@
+import { DOCUMENT } from '@angular/common';
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { mensajeDeError } from '@/core/api/api-error';
@@ -25,6 +26,7 @@ import {
   textoMeses,
   textoPorcentaje,
 } from '@/features/prestamos/calculo-prestamo';
+import { HojaSimulacion, type Simulacion } from '@/features/prestamos/hoja-simulacion';
 import { type PeticionPrestamo, PrestamosService } from '@/features/prestamos/prestamos.service';
 
 const MAX_RESULTADOS = 5;
@@ -54,7 +56,7 @@ interface Resultado {
 /** Alta de un préstamo: cliente, monto, interés mensual, plazo, calendario y generación. */
 @Component({
   selector: 'app-nuevo-prestamo',
-  imports: [DialogoModal, Icono, RouterLink],
+  imports: [DialogoModal, HojaSimulacion, Icono, RouterLink],
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { class: 'flex flex-col gap-6' },
   templateUrl: './nuevo-prestamo.html',
@@ -63,6 +65,7 @@ export class NuevoPrestamo {
   protected readonly clientes = inject(ClientesService);
   private readonly prestamos = inject(PrestamosService);
   private readonly avisos = inject(AvisosService);
+  private readonly ventana = inject(DOCUMENT).defaultView;
 
   protected readonly periodicidades = PERIODICIDADES;
   protected readonly hoy = hoyIso();
@@ -248,6 +251,25 @@ export class NuevoPrestamo {
     this.fechaInicio() && !this.errorFecha() ? fechaLarga(this.fechaInicio()) : '—',
   );
 
+  /** Lo que se imprime para el cliente: el resumen y el calendario completo, sin la fórmula. */
+  protected readonly simulacion = computed<Simulacion>(() => {
+    const { cuota, detalle, monto, tasa, meses, interes, total } = this.resumen();
+    return {
+      cliente: this.elegido()?.nombreCompleto,
+      emision: this.hoyTexto,
+      cuota,
+      detalle,
+      monto,
+      tasa,
+      meses,
+      interes,
+      total,
+      primerPago: this.primerPago(),
+      filas: this.filas(),
+      notaUltimoPago: this.notaUltimoPago(),
+    };
+  });
+
   private readonly valido = computed(
     () =>
       !!this.elegido() &&
@@ -292,6 +314,17 @@ export class NuevoPrestamo {
     }
     this.errorApi.set('');
     this.confirmando.set(true);
+  }
+
+  /** No exige cliente: la simulación se le enseña antes de que haga la solicitud. */
+  protected imprimirSimulacion(): void {
+    if (this.filas().length === 0) {
+      this.avisos.error(
+        'Captura el monto, el interés y la fecha del primer pago para imprimir la simulación.',
+      );
+      return;
+    }
+    this.ventana?.print();
   }
 
   protected cerrarConfirmacion(): void {

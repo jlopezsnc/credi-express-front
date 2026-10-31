@@ -21,7 +21,16 @@ export type NombreIcono =
   | 'palomita'
   | 'alerta'
   | 'baja'
-  | 'reactivar';
+  | 'reactivar'
+  | 'descargar'
+  | 'imprimir'
+  | 'info'
+  | 'listo'
+  | 'ordenar'
+  | 'orden-asc'
+  | 'orden-desc'
+  | 'anterior'
+  | 'siguiente';
 
 /**
  * Íconos de trazo en SVG en línea (sin fuentes ni archivos externos). El tamaño lo da el host:
@@ -126,6 +135,37 @@ export type NombreIcono =
           <circle cx="9" cy="8" r="3.5" />
           <path d="M2.5 20c0-3.6 2.9-6.5 6.5-6.5s6.5 2.9 6.5 6.5" />
           <path d="m16 11 2 2 4-4" />
+        }
+        @case ('descargar') {
+          <path d="M12 3.5v11M7.5 10 12 14.5 16.5 10" />
+          <path d="M4.5 16.5v3h15v-3" />
+        }
+        @case ('imprimir') {
+          <path d="M7 8.5V3.5h10v5" />
+          <rect x="3.5" y="8.5" width="17" height="8" rx="2" />
+          <path d="M7 14h10v6.5H7z" />
+        }
+        @case ('info') {
+          <circle cx="12" cy="12" r="9" />
+          <path d="M12 11v5.5M12 7.5v.01" />
+        }
+        @case ('listo') {
+          <path d="M5 12.5 10 17.5 19 7" />
+        }
+        @case ('ordenar') {
+          <path d="m8 9 4-4 4 4M8 15l4 4 4-4" />
+        }
+        @case ('orden-asc') {
+          <path d="M12 19V5M6 11l6-6 6 6" />
+        }
+        @case ('orden-desc') {
+          <path d="M12 5v14M6 13l6 6 6-6" />
+        }
+        @case ('anterior') {
+          <path d="m15 6-6 6 6 6" />
+        }
+        @case ('siguiente') {
+          <path d="m9 6 6 6-6 6" />
         }
         @case ('palomita') {
           <circle cx="12" cy="12" r="9" />

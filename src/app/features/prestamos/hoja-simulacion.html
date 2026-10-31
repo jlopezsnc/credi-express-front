@@ -1,0 +1,94 @@
+@let s = simulacion();
+<header class="border-primary flex items-start justify-between gap-4 border-b-2 pb-3.5">
+  <div class="flex items-center gap-2.5">
+    @if (logoUrl) {
+      <img [src]="logoUrl" alt="" class="size-9 rounded-[10px] object-contain" />
+    } @else {
+      <span
+        class="bg-primary text-primary-foreground inline-flex size-9 items-center justify-center rounded-[10px] print:[print-color-adjust:exact]"
+      >
+        <app-icono nombre="marca" />
+      </span>
+    }
+    <span>
+      <strong class="block text-base">Credi Express</strong>
+      <span class="text-muted-foreground">Préstamos y cobranza</span>
+    </span>
+  </div>
+  <p class="text-muted-foreground text-right">
+    Fecha de emisión<br />
+    <strong class="text-foreground">{{ s.emision }}</strong>
+  </p>
+</header>
+
+<h1 class="mt-4.5 mb-0.5 text-xl font-extrabold">Simulación de préstamo</h1>
+<p>
+  Cliente:
+  @if (s.cliente) {
+    <strong>{{ s.cliente }}</strong>
+  } @else {
+    <span class="border-foreground inline-block min-w-65 border-b">&nbsp;</span>
+  }
+</p>
+
+<div class="my-4 flex items-center justify-between gap-4 rounded-lg border px-4 py-3.5">
+  <p>
+    <span class="text-muted-foreground">Pago por cuota</span><br />
+    <strong class="text-[26px] tabular-nums">{{ s.cuota }}</strong>
+  </p>
+  <p class="text-right font-bold">{{ s.detalle }}</p>
+</div>
+
+<dl class="grid grid-cols-2 gap-x-8 gap-y-1.5">
+  <div class="flex items-baseline justify-between gap-3">
+    <dt class="text-muted-foreground">Monto solicitado</dt>
+    <dd class="font-bold tabular-nums">{{ s.monto }}</dd>
+  </div>
+  <div class="flex items-baseline justify-between gap-3">
+    <dt class="text-muted-foreground">Interés mensual</dt>
+    <dd class="font-bold tabular-nums">{{ s.tasa }}</dd>
+  </div>
+  <div class="flex items-baseline justify-between gap-3">
+    <dt class="text-muted-foreground">Plazo</dt>
+    <dd class="font-bold tabular-nums">{{ s.meses }}</dd>
+  </div>
+  <div class="flex items-baseline justify-between gap-3">
+    <dt class="text-muted-foreground">Interés generado</dt>
+    <dd class="font-bold tabular-nums">{{ s.interes }}</dd>
+  </div>
+  <div class="flex items-baseline justify-between gap-3">
+    <dt class="text-muted-foreground">Primer pago</dt>
+    <dd class="font-bold">{{ s.primerPago }}</dd>
+  </div>
+  <div class="col-span-2 mt-1 flex items-baseline justify-between gap-3 border-t pt-2 text-[15px]">
+    <dt class="font-bold">Total a pagar</dt>
+    <dd class="font-extrabold tabular-nums">{{ s.total }}</dd>
+  </div>
+</dl>
+
+<h2 class="mt-5 text-sm font-extrabold">Calendario de pagos</h2>
+<table class="mt-1.5 w-full border-collapse text-xs">
+  <thead>
+    <tr class="text-muted-foreground text-left font-bold [&>th]:border-b [&>th]:py-1.5">
+      <th scope="col">#</th>
+      <th scope="col">Vence</th>
+      <th scope="col" class="text-right">Importe</th>
+    </tr>
+  </thead>
+  <tbody>
+    @for (c of s.filas; track c.numero) {
+      <tr class="break-inside-avoid tabular-nums [&>td]:border-b [&>td]:py-1.5">
+        <td>{{ c.numero }}</td>
+        <td>{{ c.fecha }}</td>
+        <td class="text-right">{{ c.importe }}</td>
+      </tr>
+    }
+  </tbody>
+</table>
+<p class="text-muted-foreground mt-1.5">{{ s.notaUltimoPago }}</p>
+
+<p class="text-muted-foreground mt-4.5 border-t pt-3 text-[11.5px]">
+  Esta simulación es informativa y no es un contrato ni una aprobación del crédito. Si estás de
+  acuerdo con las condiciones, comunícate con nosotros para proceder con la solicitud. Los importes
+  y las fechas se confirman al generar el préstamo.
+</p>

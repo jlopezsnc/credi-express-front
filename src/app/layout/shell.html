@@ -8,14 +8,14 @@
     type="button"
     tabindex="-1"
     aria-label="Cerrar menú"
-    class="bg-overlay pointer-events-none fixed inset-0 z-30 opacity-0 transition-opacity group-data-abierto:pointer-events-auto group-data-abierto:opacity-100 lg:hidden"
+    class="bg-overlay pointer-events-none fixed inset-0 z-30 opacity-0 transition-opacity group-data-abierto:pointer-events-auto group-data-abierto:opacity-100 lg:hidden print:hidden"
     (click)="menuAbierto.set(false)"
   ></button>
 
   <aside
     aria-label="Menú principal"
     [inert]="!esEscritorio() && !menuAbierto()"
-    class="bg-card group-data-abierto:shadow-tarjeta fixed inset-y-0 left-0 z-40 flex w-71 -translate-x-full flex-col gap-2 overflow-hidden border-r px-3.5 py-5 transition-[width,translate] duration-200 group-data-abierto:translate-x-0 lg:sticky lg:top-0 lg:h-svh lg:w-66 lg:translate-x-0 lg:group-data-colapsado:w-19"
+    class="bg-card group-data-abierto:shadow-tarjeta fixed inset-y-0 left-0 z-40 flex w-71 -translate-x-full flex-col gap-2 overflow-hidden border-r px-3.5 py-5 transition-[width,translate] duration-200 group-data-abierto:translate-x-0 lg:sticky lg:top-0 lg:h-svh lg:w-66 lg:translate-x-0 lg:group-data-colapsado:w-19 print:hidden"
   >
     <div
       class="mb-3 flex min-h-12 items-center gap-3 px-1.5 lg:group-data-colapsado:justify-center"
@@ -110,7 +110,7 @@
   </aside>
 
   <div class="flex min-w-0 flex-1 flex-col">
-    <header class="bg-card flex items-center gap-3 border-b px-4 py-3 lg:hidden">
+    <header class="bg-card flex items-center gap-3 border-b px-4 py-3 lg:hidden print:hidden">
       <button
         type="button"
         class="btn-icono"
@@ -131,13 +131,15 @@
       </button>
     </header>
 
-    <main class="w-full max-w-7xl px-4 pt-5 pb-8 lg:px-10 lg:pt-9 lg:pb-12">
+    <main
+      class="w-full max-w-7xl px-4 pt-5 pb-8 lg:px-10 lg:pt-9 lg:pb-12 print:max-w-none print:p-0"
+    >
       <router-outlet />
     </main>
   </div>
 </div>
 
-<div role="status" aria-live="polite">
+<div role="status" aria-live="polite" class="print:hidden">
   @if (avisos.aviso(); as aviso) {
     <div
       class="fixed bottom-6 left-1/2 z-60 flex w-max max-w-[calc(100vw-2rem)] -translate-x-1/2 items-center gap-2.5 rounded-xl px-4.5 py-3 text-sm font-semibold shadow-xl"

@@ -1,41 +1,69 @@
 import { provideHttpClient, withInterceptors } from '@angular/common/http';
-import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
+import {
+  HttpTestingController,
+  provideHttpClientTesting,
+  type TestRequest,
+} from '@angular/common/http/testing';
 import { type ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { errorInterceptor } from '@/core/api/error.interceptor';
-import type { CuotaRespuesta } from '@/features/prestamos/prestamo';
+import type {
+  PaginaPrestamos,
+  PrestamoDetalle,
+  PrestamoResumen,
+} from '@/features/prestamos/prestamo';
 import { Prestamos } from '@/features/prestamos/prestamos';
 
-const LISTA = '/api/operaciones-prestamos/buscar-ep/todo';
+const LISTA = '/api/operaciones-prestamos/prestamos';
 
-function cuotas(
-  idPrestamo: number,
-  idCliente: number,
+// Datos ficticios, ya calculados como los entrega el back.
+function prestamo(
+  id: number,
   nombre: string,
-  vencimientos: string[],
-  pagadas = 0,
-): CuotaRespuesta[] {
-  return vencimientos.map((fecha, i) => ({
-    id: idPrestamo * 100 + i,
-    clienteResponse: { idCliente, nombreCompleto: nombre },
-    modalidadResponse: { idModalidad: 1, descripcion: 'Semanal' },
-    numeroCuota: i + 1,
-    fechaVencimiento: fecha,
-    importeCuota: 840.0,
-    fechaPago: i < pagadas ? fecha : null,
-    estadoPago: null,
-    diasMoratorios: null,
-    alerta: 'VIGENTE',
-    idCalculadoraPrestamo: idPrestamo,
-  }));
+  cambios: Partial<PrestamoResumen> = {},
+): PrestamoResumen {
+  return {
+    idPrestamo: id,
+    cliente: { idCliente: id, nombreCompleto: nombre, telefono: null },
+    modalidad: { idModalidad: 1, descripcion: 'Semanal' },
+    numeroCuotas: 12,
+    cuotasPagadas: 4,
+    cuotasVencidas: 0,
+    importeCuota: '840.00',
+    totalPagar: '10080.00',
+    saldoPendiente: '6720.00',
+    proximoPago: '2026-11-04',
+    proximaCuota: 5,
+    estado: 'AL_CORRIENTE',
+    ...cambios,
+  };
 }
 
-// Datos ficticios. Las fechas lejanas evitan depender del día en que corran las pruebas.
-const RESPUESTA: CuotaRespuesta[] = [
-  ...cuotas(1, 1, 'MARÍA FERNANDA LÓPEZ RUIZ', ['2020-01-07', '2020-01-14']),
-  ...cuotas(2, 2, 'JOSÉ ANTONIO HERNÁNDEZ CRUZ', ['2099-01-07', '2099-01-14']),
-  ...cuotas(3, 3, 'GUADALUPE MARTÍNEZ TORRES', ['2020-01-07', '2020-01-14'], 2),
-];
+const MARIA = prestamo(1, 'MARÍA FERNANDA LÓPEZ RUIZ', {
+  estado: 'CON_ATRASO',
+  cuotasVencidas: 2,
+  proximoPago: '2026-10-14',
+});
+const JOSE = prestamo(2, 'JOSÉ ANTONIO HERNÁNDEZ CRUZ');
+
+function pagina(
+  contenido: PrestamoResumen[],
+  cambios: Partial<PaginaPrestamos> = {},
+): PaginaPrestamos {
+  return {
+    contenido,
+    pagina: 0,
+    tamano: 10,
+    totalElementos: contenido.length,
+    totalPaginas: 1,
+    contadores: { activos: 2, conAtraso: 1, liquidados: 3, todos: 5 },
+    ...cambios,
+  };
+}
+
+function sobre<T>(objeto: T) {
+  return { objetoResponse: objeto, httpStatus: 'OK', mensaje: 'Listo.' };
+}
 
 describe('Prestamos', () => {
   beforeAll(() => {
@@ -54,17 +82,33 @@ describe('Prestamos', () => {
     );
   }
 
-  function boton(texto: string): HTMLButtonElement {
-    const encontrado = [...pantalla.querySelectorAll('button')].find((b) =>
-      b.textContent.includes(texto),
+  function boton(texto: string, selector = 'button'): HTMLButtonElement {
+    const encontrado = [...pantalla.querySelectorAll<HTMLButtonElement>(selector)].find((b) =>
+      b.textContent.replace(/\s+/g, ' ').trim().startsWith(texto),
     );
     if (!encontrado) throw new Error(`No hay botón "${texto}"`);
     return encontrado;
   }
 
-  async function esperar(): Promise<void> {
+  /**
+   * Deja correr temporizadores, efectos y detección de cambios. No usa `whenStable()`: espera a
+   * que terminen las peticiones de `httpResource`, y aquí las responde la prueba.
+   */
+  async function esperar(ms = 0): Promise<void> {
+    await new Promise((resolver) => setTimeout(resolver, ms));
+    TestBed.tick();
     await new Promise((resolver) => setTimeout(resolver));
-    await fixture.whenStable();
+    TestBed.tick();
+  }
+
+  /** La petición de la lista que está pendiente. */
+  function lista(): TestRequest {
+    return http.expectOne((r) => r.url === LISTA);
+  }
+
+  async function responder(respuesta: PaginaPrestamos): Promise<void> {
+    lista().flush(sobre(respuesta));
+    await esperar();
   }
 
   beforeEach(async () => {
@@ -78,48 +122,139 @@ describe('Prestamos', () => {
     http = TestBed.inject(HttpTestingController);
     fixture = TestBed.createComponent(Prestamos);
     pantalla = fixture.nativeElement as HTMLElement;
-    await fixture.whenStable();
+    await esperar();
   });
 
-  it('agrupa las cuotas y muestra los préstamos activos', async () => {
+  afterEach(() => {
+    http.verify();
+  });
+
+  it('pide los activos por próximo pago de 10 en 10 y muestra lo que calcula el back', async () => {
     expect(pantalla.textContent).toContain('Cargando préstamos');
-    http.expectOne(LISTA).flush(RESPUESTA); // hoy el back responde un arreglo suelto
+    const peticion = lista();
+    expect(peticion.request.params.get('filtro')).toBe('ACTIVOS');
+    expect(peticion.request.params.get('orden')).toBe('PROXIMO_PAGO');
+    expect(peticion.request.params.get('direccion')).toBe('ASC');
+    expect(peticion.request.params.get('pagina')).toBe('0');
+    expect(peticion.request.params.get('tamano')).toBe('10');
+    expect(peticion.request.params.has('busqueda')).toBe(false);
+    peticion.flush(sobre(pagina([MARIA, JOSE])));
     await esperar();
-    expect(nombresEnTabla()).toEqual(['JOSÉ ANTONIO HERNÁNDEZ CRUZ', 'MARÍA FERNANDA LÓPEZ RUIZ']);
+
+    expect(nombresEnTabla()).toEqual(['MARÍA FERNANDA LÓPEZ RUIZ', 'JOSÉ ANTONIO HERNÁNDEZ CRUZ']);
     expect(pantalla.textContent).toContain('Con atraso');
     expect(pantalla.textContent).toContain('Al corriente');
+    expect(pantalla.textContent).toContain('4 de 12');
+    expect(pantalla.textContent).toContain('$6,720.00 MXN');
+    expect(boton('Liquidados').textContent).toContain('3');
+    expect(pantalla.textContent).toContain('Mostrando 1–2 de 2 préstamos');
   });
 
-  it('acepta la respuesta dentro del sobre y filtra liquidados', async () => {
-    http.expectOne(LISTA).flush({ objetoResponse: RESPUESTA, httpStatus: 'OK', mensaje: '6' });
+  it('ordena en el back por la columna elegida y alterna la dirección', async () => {
+    await responder(pagina([MARIA, JOSE]));
+
+    boton('Cliente', 'thead button').click();
     await esperar();
+    let peticion = lista();
+    expect(peticion.request.params.get('orden')).toBe('CLIENTE');
+    expect(peticion.request.params.get('direccion')).toBe('ASC');
+    peticion.flush(sobre(pagina([JOSE, MARIA])));
+    await esperar();
+    expect(boton('Cliente', 'thead button').closest('th')?.getAttribute('aria-sort')).toBe(
+      'ascending',
+    );
+
+    boton('Cliente', 'thead button').click();
+    await esperar();
+    peticion = lista();
+    expect(peticion.request.params.get('direccion')).toBe('DESC');
+    peticion.flush(sobre(pagina([MARIA, JOSE])));
+    await esperar();
+  });
+
+  it('pagina y filtra en el back, y al filtrar vuelve a la primera página', async () => {
+    await responder(pagina([MARIA, JOSE], { totalElementos: 12, totalPaginas: 2 }));
+    pantalla.querySelector<HTMLButtonElement>('[aria-label="Página siguiente"]')?.click();
+    await esperar();
+    let peticion = lista();
+    expect(peticion.request.params.get('pagina')).toBe('1');
+    peticion.flush(sobre(pagina([JOSE], { pagina: 1, totalElementos: 12, totalPaginas: 2 })));
+    await esperar();
+    expect(pantalla.textContent).toContain('Mostrando 11–11 de 12 préstamos');
+
     boton('Liquidados').click();
-    await fixture.whenStable();
-    expect(nombresEnTabla()).toEqual(['GUADALUPE MARTÍNEZ TORRES']);
+    await esperar();
+    peticion = lista();
+    expect(peticion.request.params.get('filtro')).toBe('LIQUIDADOS');
+    expect(peticion.request.params.get('pagina')).toBe('0');
+    peticion.flush(sobre(pagina([])));
+    await esperar();
+    expect(pantalla.textContent).toContain('Sin coincidencias');
   });
 
-  it('muestra el calendario de un préstamo', async () => {
-    http.expectOne(LISTA).flush(RESPUESTA);
+  it('busca en el back cuando se deja de escribir', async () => {
+    await responder(pagina([MARIA, JOSE]));
+    const entrada = pantalla.querySelector<HTMLInputElement>('input[type="search"]');
+    if (!entrada) throw new Error('Sin buscador');
+    entrada.value = 'jo';
+    entrada.dispatchEvent(new Event('input'));
+    entrada.value = 'josé';
+    entrada.dispatchEvent(new Event('input'));
     await esperar();
+    http.expectNone((r) => r.url === LISTA);
+
+    await esperar(350);
+    const peticion = lista();
+    expect(peticion.request.params.get('busqueda')).toBe('josé');
+    peticion.flush(sobre(pagina([JOSE])));
+    await esperar();
+    expect(nombresEnTabla()).toEqual(['JOSÉ ANTONIO HERNÁNDEZ CRUZ']);
+  });
+
+  it('muestra el calendario con el estatus de cada cuota que calcula el back', async () => {
+    await responder(pagina([MARIA, JOSE]));
     pantalla
       .querySelector<HTMLButtonElement>(
         '[aria-label="Ver calendario del préstamo 1 de MARÍA FERNANDA LÓPEZ RUIZ"]',
       )
       ?.click();
-    await fixture.whenStable();
+    await esperar();
+    expect(pantalla.querySelector('dialog')?.textContent).toContain('Cargando calendario');
+
+    const cuota = (numero: number, abonado: string, saldo: string) => ({
+      idCuota: 10 + numero,
+      numeroCuota: numero,
+      fechaVencimiento: '2026-10-14',
+      importe: '840.00',
+      abonado,
+      saldo,
+      fechaPago: null,
+    });
+    const detalle: PrestamoDetalle = {
+      prestamo: MARIA,
+      cuotas: [
+        { ...cuota(1, '840.00', '0.00'), fechaPago: '2026-09-30', estatus: 'PAGADA' },
+        { ...cuota(2, '300.00', '540.00'), estatus: 'VENCIDA' },
+        { ...cuota(3, '100.00', '740.00'), estatus: 'ABONO_PARCIAL' },
+      ],
+    };
+    http.expectOne('/api/operaciones-prestamos/prestamos/1').flush(sobre(detalle));
+    await esperar();
+
     const dialogo = pantalla.querySelector('dialog');
-    expect(dialogo?.querySelectorAll('tbody tr')).toHaveLength(2);
+    expect(dialogo?.querySelectorAll('tbody tr')).toHaveLength(3);
     expect(dialogo?.textContent).toContain('2 pagos vencidos');
-    expect(dialogo?.textContent).toContain('$1,680.00 MXN');
+    expect(dialogo?.textContent).toContain('Abono parcial');
+    expect(dialogo?.textContent).toContain('$540.00 MXN');
   });
 
   it('ofrece reintentar si el back falla', async () => {
-    http.expectOne(LISTA).flush(null, { status: 403, statusText: 'Forbidden' });
+    lista().flush(null, { status: 403, statusText: 'Forbidden' });
     await esperar();
     expect(pantalla.textContent).toContain('No tienes permiso');
     boton('Reintentar').click();
-    http.expectOne(LISTA).flush([]);
     await esperar();
-    expect(pantalla.textContent).toContain('Mostrando 0 de 0 préstamos');
+    await responder(pagina([]));
+    expect(pantalla.textContent).toContain('0 préstamos');
   });
 });
