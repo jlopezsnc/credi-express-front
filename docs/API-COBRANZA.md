@@ -832,9 +832,10 @@ Diferencias con lo propuesto arriba:
 | Contadores de las pestañas   | `totalElementos` de `cuotas-pendientes` (una llamada por situación) y de `pagos` |
 | Fila de cuota                | `cliente.nombreCompleto`, `cliente.telefono`, `numeroCuota`/`totalCuotas` ("Pago 2 de 8"), `idPrestamo` + `modalidad.descripcion`, `fechaVencimiento`, `situacion` + `diasAtraso` ("12 días de atraso", "Vence hoy", "En 3 días"), `saldoCuota`, `importeAbonado`/`importeCuota` si hay abono |
 | Diálogo "Registrar pago"     | Lo mismo de la fila; importe inicial = `saldoCuota`; tope = `saldoCuota`   |
-| Recibo                       | `folio`, `cliente.nombreCompleto`, `idPrestamo`, `numeroCuota`/`totalCuotas`, `metodoPago` + `referencia`, `fechaPago`, `importe`, `saldoCuota` / `cuotaLiquidada` |
+| Recibo                       | `folio`, `cliente.nombreCompleto`, `numeroCuota`/`totalCuotas` (sin el número de préstamo, por discreción), `metodoPago` + `referencia`, `fechaPago`, `importe`, `saldoCuota` / `cuotaLiquidada` |
 | Pestaña "Cobrado hoy"        | `folio`, `cliente.nombreCompleto`, `numeroCuota`/`totalCuotas`, `idPrestamo`, `tipo`, `metodoPago`, hora de `fechaRegistro`, `importe` |
 | "Reimprimir" (Cobrado hoy)   | `GET /recibo/{folio}` → el mismo diálogo y PNG del cobro                   |
+| "Reimprimir" (Reportes)      | `GET /recibo/{folio}` de cualquier pago vigente del periodo (hasta 92 días)  |
 | Errores                      | `mensaje` tal cual; `campos` se pinta bajo cada campo del diálogo         |
 
 Después de registrar un pago, el front vuelve a pedir `resumen`, las tres pestañas de cuotas y `pagos`.

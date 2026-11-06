@@ -1,5 +1,10 @@
 <main class="mx-auto flex min-h-svh max-w-sm flex-col justify-center p-4">
   <h1 class="mb-6 text-2xl font-semibold">Iniciar sesión</h1>
+  @if (avisoCierre(); as aviso) {
+    <p role="status" class="bg-muted text-foreground mb-4 rounded-md px-3 py-2 text-sm">
+      {{ aviso }}
+    </p>
+  }
   <form novalidate [formGroup]="form" (ngSubmit)="entrar()" class="space-y-4">
     <label class="block">
       <span class="text-sm font-medium">Correo</span>

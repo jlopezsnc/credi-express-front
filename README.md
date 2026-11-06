@@ -1,6 +1,6 @@
 # credi-express-front
 
-Front de la aplicación Credi Express: administración de préstamos y cobranza.
+Front de la aplicación Crédito Expres: administración de préstamos y cobranza.
 Diseño y estándares en [docs/REVISION-BACK-Y-PROPUESTA-FRONT.md](docs/REVISION-BACK-Y-PROPUESTA-FRONT.md).
 
 ## Stack
@@ -16,7 +16,7 @@ Diseño y estándares en [docs/REVISION-BACK-Y-PROPUESTA-FRONT.md](docs/REVISION
 | Autenticación     | Firebase Auth / Identity Platform (`@firebase/auth`)               |
 | PWA               | `@angular/service-worker`                                          |
 | Calidad           | angular-eslint, Prettier, Vitest (`ng test`), Playwright           |
-| Contenedor        | nginx sin privilegios (puerto 8080) en GKE                         |
+| Hosting           | Firebase Hosting (`/api/**` → Cloud Run del back)                  |
 
 > No se usa Angular Material ni estilos por componente: Angular los inyecta como `<style>` en
 > línea y obligaría a relajar la CSP con `style-src 'unsafe-inline'`.
@@ -62,8 +62,7 @@ src/
 ├── styles.css      Tailwind y tokens de tema
 └── index.html
 scripts/            generar-env.mjs
-nginx/              configuración de nginx y headers de seguridad (CSP)
-k8s/                Deployment, Service y NetworkPolicy del front
+firebase.json       Firebase Hosting: rewrite de /api a Cloud Run, headers de seguridad (CSP) y caché
 deploy/             script de despliegue manual (PowerShell)
 e2e/                pruebas Playwright
 ```
@@ -73,7 +72,7 @@ estilos y con `OnPush`). Importar con el alias `@/` (`@/core/auth/auth.service`)
 
 ## Seguridad (docs §5.2)
 
-- CSP estricta sin `unsafe-inline` ni `unsafe-eval` (`nginx/security-headers.conf`). Por eso los
+- CSP estricta sin `unsafe-inline` ni `unsafe-eval` (`firebase.json`). Por eso los
   componentes no llevan `styles`/`styleUrl` ni atributos `style="…"` (reglas de ESLint), y el build
   no incrusta CSS crítico (`inlineCritical: false` en `angular.json`).
 - Prohibido `bypassSecurityTrust*` y `localStorage.setItem` (reglas de ESLint).
@@ -84,17 +83,18 @@ estilos y con `OnPush`). Importar con el alias `@/` (`@/core/auth/auth.service`)
 - El service worker solo precachea el shell estático (`ngsw-config.json`); `/api` no se guarda.
 - Solo las variables `NG_APP_*` llegan al navegador: nunca poner secretos ahí.
 
-## Despliegue manual en GKE
+## Despliegue manual en Firebase Hosting
 
 ```powershell
 # .env.production.local con la configuración web de Firebase de producción
-.\deploy\deploy-front.ps1 -Version 0.1.0 -Proyecto <proyecto> -Region <region> -Cluster <cluster>
+npx firebase-tools@15.34.0 login     # solo la primera vez
+.deploydeploy-front.ps1 -Version 0.1.0
 ```
 
-El script corre `npm run check`, construye la imagen versionada, la sube a Artifact Registry,
-aplica `k8s/` y espera el rollout (si falla, hace `rollout undo`). El `Ingress`,
-`ManagedCertificate` y `BackendConfig` (Cloud Armor) son compartidos con el back:
-`/api/*` → `crediexpress-back` y `/*` → `crediexpress-front` (puerto 80 del Service).
+El script corre `npm run check`, hace el build y lo publica con `firebase deploy --only hosting`.
+Hosting sirve el front en `https://credi-express-app.web.app` y envía `/api/**` al servicio de
+Cloud Run `crediexpress-back` (mismo origen: sin CORS). El back se despliega antes; ver
+`docs/DESPLIEGUE-GCP.md` en su repo. Para revertir: Consola de Firebase > Hosting > historial.
 
 ## Convenciones
 

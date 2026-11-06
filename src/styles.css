@@ -170,8 +170,20 @@
   }
 }
 
+/*
+ * Sin margen de página el navegador no tiene dónde imprimir su encabezado y pie (fecha, hora,
+ * título y URL): el cliente no debe verlos. El margen lo da la hoja, y `clone` lo repite en cada
+ * página cuando el calendario ocupa más de una.
+ */
 @page {
-  margin: 14mm;
+  margin: 0;
+}
+@media print {
+  .papel {
+    padding: 14mm;
+    -webkit-box-decoration-break: clone;
+    box-decoration-break: clone;
+  }
 }
 
 /* Piezas que se repiten en todas las pantallas. */

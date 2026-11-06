@@ -9,7 +9,9 @@ import {
 } from '@angular/core';
 import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { AuthService, type Rol } from '@/core/auth/auth.service';
+import { SesionService } from '@/core/auth/sesion.service';
 import { iniciales } from '@/core/format';
+import { env } from '@env';
 import { AvisosService } from '@/core/ui/avisos.service';
 import { Icono, type NombreIcono } from '@/core/ui/icono';
 import { TemaService } from '@/core/ui/tema.service';
@@ -52,6 +54,9 @@ export class Shell {
   protected readonly avisos = inject(AvisosService);
 
   protected readonly secciones = SECCIONES;
+  /** Logotipo del negocio; si no carga se muestra el ícono `marca`. */
+  protected readonly logoUrl = env.logoUrl.trim();
+  protected readonly logoFallo = signal(false);
   protected readonly colapsado = signal(false);
   protected readonly menuAbierto = signal(false);
   /** En el teléfono el menú cerrado queda `inert` para que el teclado no entre en él. */
@@ -75,6 +80,9 @@ export class Shell {
   });
 
   constructor() {
+    // Cierre por inactividad (15 min) y duración máxima (12 h) mientras se use la app.
+    inject(DestroyRef).onDestroy(inject(SesionService).vigilar());
+
     // Mismo corte que el prefijo `lg:` de Tailwind (64rem).
     const consulta = inject(DOCUMENT).defaultView?.matchMedia('(min-width: 64rem)');
     if (consulta) {

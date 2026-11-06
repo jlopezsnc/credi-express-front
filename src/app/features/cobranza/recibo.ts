@@ -30,6 +30,8 @@ export interface Recibo {
   liquidada: boolean;
   nota: string;
   archivo: string;
+  /** `true` cuando se reimprime un pago ya cobrado: el recibo lleva la leyenda "REIMPRESIÓN". */
+  reimpresion: boolean;
 }
 
 const formatoFechaPago = new Intl.DateTimeFormat('es-MX', {
@@ -118,6 +120,7 @@ function importes(
   ];
 }
 
+/** El recibo va para el cliente: por discreción no lleva el número interno del préstamo. */
 export function reciboDePago(p: Pago): Recibo {
   return {
     titulo: 'Pago registrado',
@@ -125,10 +128,7 @@ export function reciboDePago(p: Pago): Recibo {
     registro: textoRegistro(p.fechaRegistro),
     filas: [
       { etiqueta: 'Cliente', valor: p.cliente.nombreCompleto },
-      {
-        etiqueta: 'Préstamo',
-        valor: `Préstamo #${String(p.idPrestamo)} · ${rangoPagos([p.numeroCuota], p.totalCuotas)}`,
-      },
+      { etiqueta: 'Préstamo', valor: rangoPagos([p.numeroCuota], p.totalCuotas) },
       { etiqueta: 'Método', valor: textoMetodo(p.metodoPago, p.referencia) },
       { etiqueta: 'Fecha del pago', valor: fechaPagoTexto(p.fechaPago) },
     ],
@@ -138,6 +138,7 @@ export function reciboDePago(p: Pago): Recibo {
     liquidada: p.cuotaLiquidada,
     nota: p.prestamoLiquidado ? 'Con este pago el préstamo queda liquidado.' : '',
     archivo: nombreArchivo(p.cliente.nombreCompleto, [p.numeroCuota], p.totalCuotas),
+    reimpresion: false,
   };
 }
 
@@ -153,10 +154,7 @@ export function reciboDeLiquidacion(
     registro: textoRegistro(l.fechaRegistro),
     filas: [
       { etiqueta: 'Cliente', valor: l.cliente.nombreCompleto },
-      {
-        etiqueta: 'Préstamo',
-        valor: `Préstamo #${String(l.idPrestamo)} · ${saldo.modalidad.descripcion}`,
-      },
+      { etiqueta: 'Préstamo', valor: saldo.modalidad.descripcion },
       { etiqueta: 'Cuotas liquidadas', valor: rangoPagos(numeros, saldo.totalCuotas) },
       { etiqueta: 'Método', valor: textoMetodo(l.metodoPago, l.referencia) },
       { etiqueta: 'Fecha del pago', valor: fechaPagoTexto(l.fechaPago) },
@@ -167,6 +165,7 @@ export function reciboDeLiquidacion(
     liquidada: true,
     nota: notaLiquidacion(l.clienteSinAdeudos),
     archivo: nombreArchivo(l.cliente.nombreCompleto, numeros, saldo.totalCuotas),
+    reimpresion: false,
   };
 }
 
@@ -177,10 +176,9 @@ function notaLiquidacion(clienteSinAdeudos: boolean | null): string {
     : 'El cliente todavía tiene otro préstamo con saldo.';
 }
 
-/** Reimpresión: el mismo recibo que se entregó al cobrar. */
+/** Reimpresión: el mismo recibo que se entregó al cobrar, con la leyenda "REIMPRESIÓN". */
 export function reciboDeOperacion(r: ReciboOperacion): Recibo {
-  if (r.tipo === 'LIQUIDACION') {
-    return reciboDeLiquidacion(r.liquidacion, r);
-  }
-  return reciboDePago(r.pago);
+  const original =
+    r.tipo === 'LIQUIDACION' ? reciboDeLiquidacion(r.liquidacion, r) : reciboDePago(r.pago);
+  return { ...original, reimpresion: true };
 }

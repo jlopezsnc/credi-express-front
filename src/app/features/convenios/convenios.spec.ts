@@ -292,5 +292,15 @@ describe('Convenios', () => {
     expect(hoja).toContain('Convenio de pago');
     expect(hoja).toContain('Préstamos que se convienen');
     expect(hoja).not.toContain('Interés =');
+    expect(hoja).not.toContain('CV-000124');
+    expect(hoja).not.toContain('Préstamo del convenio');
+    expect(hoja).not.toMatch(/#s*d/);
+    const consecutivos = [
+      ...pantalla.querySelectorAll(
+        'app-hoja-simulacion table:first-of-type tbody tr td:first-child',
+      ),
+    ].map((c) => c.textContent.trim());
+    expect(consecutivos[0]).toBe('1');
+    expect(consecutivos).toEqual(consecutivos.map((_, i) => String(i + 1)));
   });
 });

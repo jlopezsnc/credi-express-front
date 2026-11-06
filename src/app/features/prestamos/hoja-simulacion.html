@@ -11,7 +11,7 @@
       </span>
     }
     <span>
-      <strong class="block text-base">Credi Express</strong>
+      <strong class="block text-base">Crédito Expres</strong>
       <span class="text-muted-foreground">Préstamos y cobranza</span>
     </span>
   </div>
@@ -57,7 +57,7 @@
   <table class="mt-1.5 w-full border-collapse text-xs">
     <thead>
       <tr class="text-muted-foreground text-left font-bold [&>th]:border-b [&>th]:py-1.5">
-        <th scope="col">Préstamo</th>
+        <th scope="col">#</th>
         <th scope="col">A nombre de</th>
         <th scope="col" class="text-right">Saldo</th>
       </tr>
@@ -65,7 +65,7 @@
     <tbody>
       @for (p of s.prestamos; track p.id) {
         <tr class="break-inside-avoid tabular-nums [&>td]:border-b [&>td]:py-1.5">
-          <td>#{{ p.id }}</td>
+          <td>{{ $index + 1 }}</td>
           <td>{{ p.cliente }}</td>
           <td class="text-right">{{ p.saldo }}</td>
         </tr>

@@ -23,7 +23,7 @@ const PAPEL = {
 const LETRA = "'Manrope Variable', system-ui, sans-serif";
 const LETRA_MONO = "'JetBrains Mono Variable', ui-monospace, monospace";
 /** Los mismos trazos del ícono `marca`: es el logotipo temporal. */
-const TRAZOS_LOGO = ['M17 7.5A6.5 6.5 0 1 0 17 16.5', 'M12 9.5v5M10 12h4'];
+const TRAZOS_LOGO = ['M17 7.5A6.5 6.5 0 1 0 17 16.5', 'M9 12h11M17 9l3 3-3 3'];
 const TRAZO_PALOMITA = ['M5 12.5 10 17.5 19 7'];
 const MARGEN = 24;
 const ALTO_FILA = 30;
@@ -110,7 +110,7 @@ function dibujar(
 
   // Encabezado: logotipo, negocio y folio.
   const anchoLogo = dibujarLogo(ctx, MARGEN, 20, 44, logo);
-  texto(ctx, 'Credi Express', MARGEN + anchoLogo + 12, 40, `800 17px ${LETRA}`, PAPEL.texto);
+  texto(ctx, 'Crédito Expres', MARGEN + anchoLogo + 12, 40, `800 17px ${LETRA}`, PAPEL.texto);
   texto(ctx, 'Préstamos y cobranza', MARGEN + anchoLogo + 12, 57, `500 12px ${LETRA}`, PAPEL.suave);
   texto(ctx, 'RECIBO DE PAGO', ancho - MARGEN, 38, `700 11px ${LETRA}`, PAPEL.suave, 'right');
   texto(ctx, r.folio, ancho - MARGEN, 57, `500 13px ${LETRA_MONO}`, PAPEL.texto, 'right');
@@ -134,6 +134,15 @@ function dibujar(
     PAPEL.suave,
     'center',
   );
+  if (r.reimpresion) {
+    ctx.font = `700 11px ${LETRA}`;
+    const anchoLeyenda = ctx.measureText('REIMPRESIÓN').width + 24;
+    ctx.fillStyle = PAPEL.avisoFondo;
+    ctx.beginPath();
+    ctx.roundRect(ancho / 2 - anchoLeyenda / 2, y + 101, anchoLeyenda, 20, 10);
+    ctx.fill();
+    texto(ctx, 'REIMPRESIÓN', ancho / 2, y + 115, ctx.font, PAPEL.avisoTexto, 'center');
+  }
   y += 128;
 
   const fila = (etiqueta: string, valor: string, fuerte: boolean): void => {

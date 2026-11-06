@@ -1,0 +1,535 @@
+<section class="tarjeta flex flex-col gap-3 p-4 lg:p-5" aria-label="Periodo del saldo">
+  <div class="flex flex-wrap items-center justify-between gap-3">
+    <div
+      role="group"
+      aria-label="Periodo"
+      class="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 lg:mx-0 lg:flex-wrap lg:px-0 lg:pb-0"
+    >
+      @for (a of opcionesAnio(); track a) {
+        @let activo = anio() === a;
+        <button
+          type="button"
+          [attr.aria-pressed]="activo"
+          class="inline-flex min-h-9 shrink-0 cursor-pointer items-center rounded-full border px-3.5 text-[13px] font-semibold whitespace-nowrap"
+          [class]="
+            activo
+              ? 'bg-foreground text-card border-foreground'
+              : 'bg-card text-muted-foreground hover:text-foreground'
+          "
+          (click)="elegirAnio(a)"
+        >
+          {{ a === null ? 'Toda la historia' : a }}
+        </button>
+      }
+    </div>
+    <div class="flex flex-wrap gap-2">
+      <button type="button" class="btn-secundario" (click)="abrirRegistro('APORTACION')">
+        <app-icono nombre="mas" class="size-4" />
+        Aportar capital
+      </button>
+      <button type="button" class="btn-secundario" (click)="abrirRegistro('RETIRO')">
+        <app-icono nombre="mas" class="size-4" />
+        Registrar retiro
+      </button>
+    </div>
+  </div>
+  <p class="text-muted-foreground text-xs">
+    Saldo = capital aportado + lo cobrado − lo prestado − los retiros. El capital y los intereses
+    que se cobran se vuelven a prestar; esto es lo que debe haber entre efectivo y banco.
+  </p>
+</section>
+
+@if (saldo().error; as error) {
+  <div
+    role="alert"
+    class="bg-destructive-soft text-destructive flex flex-wrap items-center justify-between gap-3 rounded-lg px-4 py-3 text-sm font-semibold"
+  >
+    {{ error }}
+    <button type="button" class="btn-secundario min-h-9" (click)="consultarSaldo()">
+      Reintentar
+    </button>
+  </div>
+}
+
+@if (vista(); as v) {
+  <section
+    class="tarjeta grid grid-cols-1 gap-3 p-4 sm:grid-cols-2 lg:p-5 xl:grid-cols-[repeat(auto-fit,minmax(0,1fr))]"
+    aria-label="Cálculo del saldo"
+  >
+    @for (t of v.terminos; track t.etiqueta) {
+      <div class="flex min-w-0 flex-col gap-1 px-1 py-1">
+        <span class="text-muted-foreground flex items-center gap-1.5 text-[13px] font-bold">
+          @if (t.signo) {
+            <span
+              class="inline-flex size-5 items-center justify-center rounded-md text-xs font-extrabold"
+              [class]="t.signo === '+' ? 'bg-ok-soft text-ok' : 'bg-aviso-soft text-aviso'"
+              aria-hidden="true"
+              >{{ t.signo }}</span
+            >
+          }
+          {{ t.etiqueta }}
+        </span>
+        <span class="text-lg font-extrabold tracking-tight break-words tabular-nums">{{
+          t.valor
+        }}</span>
+        <span class="text-muted-foreground text-xs">{{ t.detalle }}</span>
+      </div>
+    }
+    <div
+      class="flex min-w-0 flex-col gap-1 rounded-xl px-4 py-3"
+      [class]="
+        v.negativo ? 'bg-destructive-soft text-destructive' : 'bg-primary text-primary-foreground'
+      "
+    >
+      <span class="text-[13px] font-bold opacity-90">= {{ v.tituloFinal }}</span>
+      <span class="text-2xl font-extrabold tracking-tight break-words tabular-nums">{{
+        v.saldoFinal
+      }}</span>
+      <span class="text-xs opacity-90">
+        @if (anio() === null) {
+          Lo que debes tener entre efectivo y banco
+        } @else {
+          Hoy: {{ v.saldoActual }}
+        }
+      </span>
+    </div>
+  </section>
+
+  @if (v.sinDatos) {
+    <div class="tarjeta px-6 py-12 text-center">
+      <p class="text-base font-bold">Sin movimientos en {{ v.periodo }}</p>
+      <p class="text-muted-foreground mt-1.5 text-sm">
+        Empieza registrando tu capital inicial con "Aportar capital".
+      </p>
+    </div>
+  } @else {
+    <div class="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)]">
+      <section class="tarjeta min-w-0 overflow-hidden" aria-labelledby="t-grafica-caja">
+        <div class="flex flex-wrap items-baseline justify-between gap-2 border-b px-4.5 py-3.5">
+          <h2 id="t-grafica-caja" class="text-[15px] font-extrabold">Mes con mes</h2>
+          <span class="text-muted-foreground text-xs" aria-live="polite">{{ detalleMes() }}</span>
+        </div>
+        <div class="px-3 pt-3 pb-1">
+          <svg
+            [attr.viewBox]="'0 0 ' + lienzo.ancho + ' ' + lienzo.alto"
+            class="block h-auto w-full"
+            role="img"
+            aria-label="Cobrado y prestado por mes, con el saldo acumulado"
+            (mouseleave)="mesActivo.set(undefined)"
+          >
+            @for (m of v.grafica.marcas; track m.etiqueta) {
+              <line
+                [attr.x1]="lienzo.izquierda"
+                [attr.x2]="lienzo.ancho - lienzo.derecha"
+                [attr.y1]="m.y"
+                [attr.y2]="m.y"
+                class="stroke-border"
+                stroke-width="1"
+              />
+              <text
+                [attr.x]="lienzo.izquierda - 6"
+                [attr.y]="m.y + 4"
+                text-anchor="end"
+                class="fill-muted-foreground text-[10px]"
+              >
+                {{ m.etiqueta }}
+              </text>
+            }
+            @for (c of v.grafica.columnas; track c.mes; let i = $index) {
+              <g (mouseenter)="mesActivo.set(i)">
+                <rect
+                  [attr.x]="c.cobrado.x"
+                  [attr.y]="c.cobrado.y"
+                  [attr.width]="c.ancho"
+                  [attr.height]="c.cobrado.alto"
+                  rx="2"
+                  class="fill-ok"
+                  [class.opacity-60]="mesActivo() !== undefined && mesActivo() !== i"
+                />
+                <rect
+                  [attr.x]="c.prestado.x"
+                  [attr.y]="c.prestado.y"
+                  [attr.width]="c.ancho"
+                  [attr.height]="c.prestado.alto"
+                  rx="2"
+                  class="fill-aviso"
+                  [class.opacity-60]="mesActivo() !== undefined && mesActivo() !== i"
+                />
+                <text
+                  [attr.x]="c.cobrado.x + c.ancho"
+                  [attr.y]="lienzo.alto - 9"
+                  text-anchor="middle"
+                  class="fill-muted-foreground text-[10px]"
+                >
+                  {{ c.etiqueta }}
+                </text>
+              </g>
+            }
+            <polyline
+              [attr.points]="v.grafica.linea"
+              fill="none"
+              class="stroke-primary"
+              stroke-width="2.5"
+              stroke-linejoin="round"
+            />
+            @if (v.grafica.ultimo; as u) {
+              <circle
+                [attr.cx]="u.x"
+                [attr.cy]="u.y"
+                r="4.5"
+                class="fill-primary stroke-card"
+                stroke-width="2"
+              />
+              <text
+                [attr.x]="u.x - 6"
+                [attr.y]="u.y - 10"
+                text-anchor="end"
+                class="fill-primary text-[11px] font-extrabold"
+              >
+                {{ u.etiqueta }}
+              </text>
+            }
+          </svg>
+        </div>
+        <div class="text-muted-foreground flex flex-wrap gap-4 px-4.5 pb-3.5 text-xs">
+          <span class="inline-flex items-center gap-1.5"
+            ><span class="bg-ok size-2.5 rounded-sm"></span>Cobrado</span
+          >
+          <span class="inline-flex items-center gap-1.5"
+            ><span class="bg-aviso size-2.5 rounded-sm"></span>Prestado</span
+          >
+          <span class="inline-flex items-center gap-1.5"
+            ><span class="bg-primary h-0.75 w-3 rounded-sm"></span>Saldo acumulado</span
+          >
+        </div>
+      </section>
+
+      <section class="tarjeta min-w-0 overflow-hidden" aria-labelledby="t-meses-caja">
+        <div class="flex flex-wrap items-baseline justify-between gap-2 border-b px-4.5 py-3.5">
+          <h2 id="t-meses-caja" class="text-[15px] font-extrabold">Detalle por mes</h2>
+          <span class="text-muted-foreground text-xs">Más reciente primero</span>
+        </div>
+        <div class="max-h-105 overflow-auto">
+          <table class="w-full border-collapse text-sm">
+            <thead class="sticky top-0">
+              <tr
+                class="bg-muted text-muted-foreground text-left text-xs font-bold tracking-wider uppercase [&>th]:border-b [&>th]:px-3 [&>th]:py-3 [&>th]:whitespace-nowrap [&>th:first-child]:pl-4.5 [&>th:last-child]:pr-4.5"
+              >
+                <th scope="col">Mes</th>
+                <th scope="col" class="text-right">Entradas</th>
+                <th scope="col" class="text-right">Salidas</th>
+                <th scope="col" class="text-right">Neto</th>
+                <th scope="col" class="text-right">Saldo</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (f of v.filas; track f.mes) {
+                <tr
+                  class="[&>td]:border-b [&>td]:px-3 [&>td]:py-2.5 [&>td]:whitespace-nowrap last:[&>td]:border-b-0 [&>td:first-child]:pl-4.5 [&>td:last-child]:pr-4.5"
+                >
+                  <td class="font-bold">{{ f.mes }}</td>
+                  <td class="text-right tabular-nums">
+                    <div>{{ f.entradas }}</div>
+                    @if (f.aportado) {
+                      <div class="text-muted-foreground text-xs">Capital {{ f.aportado }}</div>
+                    }
+                  </td>
+                  <td class="text-right tabular-nums">
+                    <div>{{ f.salidas }}</div>
+                    @if (f.retirado) {
+                      <div class="text-muted-foreground text-xs">Retiros {{ f.retirado }}</div>
+                    }
+                  </td>
+                  <td
+                    class="text-right font-bold tabular-nums"
+                    [class]="f.positivo ? 'text-ok' : 'text-aviso'"
+                  >
+                    {{ f.neto }}
+                  </td>
+                  <td class="text-right font-extrabold tabular-nums">{{ f.acumulado }}</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+        <div class="text-muted-foreground border-t px-4.5 py-3 text-[13px]">
+          Neto de {{ v.periodo }}:
+          <strong class="text-foreground tabular-nums">{{ v.neto }}</strong>
+          · Solo pagos vigentes. Los convenios no cuentan como préstamo nuevo.
+        </div>
+      </section>
+    </div>
+  }
+} @else if (saldo().cargando) {
+  <div class="tarjeta text-muted-foreground px-6 py-12 text-center text-sm" aria-busy="true">
+    Calculando saldo…
+  </div>
+}
+
+<section class="tarjeta overflow-hidden" aria-labelledby="t-movimientos-caja">
+  <div class="flex flex-wrap items-baseline justify-between gap-2 border-b px-4.5 py-3.5">
+    <h2 id="t-movimientos-caja" class="text-[15px] font-extrabold">Aportaciones y retiros</h2>
+    <span class="text-muted-foreground text-xs">No se borran: se cancelan</span>
+  </div>
+  @if (movimientos().error; as error) {
+    <div
+      role="alert"
+      class="bg-destructive-soft text-destructive m-4 flex flex-wrap items-center justify-between gap-3 rounded-lg px-4 py-3 text-sm font-semibold"
+    >
+      {{ error }}
+      <button type="button" class="btn-secundario min-h-9" (click)="consultarMovimientos(0)">
+        Reintentar
+      </button>
+    </div>
+  }
+  @if (listaMovimientos(); as l) {
+    @if (l.filas.length === 0) {
+      <div class="px-6 py-10 text-center">
+        <p class="text-base font-bold">Todavía no hay aportaciones ni retiros</p>
+        <p class="text-muted-foreground mt-1.5 text-sm">
+          Registra tu capital inicial para que el saldo empiece desde lo que pusiste.
+        </p>
+      </div>
+    } @else {
+      <div class="overflow-x-auto">
+        <table class="w-full border-collapse text-sm">
+          <thead>
+            <tr
+              class="bg-muted text-muted-foreground text-left text-xs font-bold tracking-wider uppercase [&>th]:border-b [&>th]:px-3 [&>th]:py-3 [&>th]:whitespace-nowrap [&>th:first-child]:pl-4.5 [&>th:last-child]:pr-4.5"
+            >
+              <th scope="col">Fecha</th>
+              <th scope="col">Tipo</th>
+              <th scope="col">Concepto</th>
+              <th scope="col" class="text-right">Importe</th>
+              <th scope="col" class="text-right"><span class="sr-only">Acciones</span></th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (f of l.filas; track f.m.idMovimiento) {
+              <tr
+                class="[&>td]:border-b [&>td]:px-3 [&>td]:py-3 last:[&>td]:border-b-0 [&>td:first-child]:pl-4.5 [&>td:last-child]:pr-4.5"
+                [class.text-muted-foreground]="f.cancelado"
+              >
+                <td class="whitespace-nowrap tabular-nums">{{ f.fecha }}</td>
+                <td class="whitespace-nowrap">{{ f.tipo }}</td>
+                <td class="min-w-40">
+                  <div>{{ f.m.concepto }}</div>
+                  @if (f.cancelado) {
+                    <div class="mt-0.5 text-xs">Cancelado: {{ f.m.motivoCancelacion }}</div>
+                  }
+                </td>
+                <td class="text-right whitespace-nowrap tabular-nums">
+                  <span
+                    class="font-extrabold"
+                    [class.line-through]="f.cancelado"
+                    [class.text-aviso]="!f.cancelado && f.m.tipo === 'RETIRO'"
+                    >{{ f.importe }}</span
+                  >
+                  @if (f.cancelado) {
+                    <span
+                      class="bg-neutro-soft text-neutro ml-2 rounded-full px-2 py-0.5 text-xs font-bold"
+                      >Cancelado</span
+                    >
+                  }
+                </td>
+                <td class="text-right whitespace-nowrap">
+                  @if (!f.cancelado) {
+                    <button
+                      type="button"
+                      class="btn-secundario min-h-9"
+                      [attr.aria-label]="'Cancelar movimiento ' + f.m.concepto"
+                      (click)="abrirCancelar(f.m)"
+                    >
+                      Cancelar
+                    </button>
+                  }
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+      <app-paginador
+        class="border-t px-4.5 py-3"
+        [pagina]="l.pagina"
+        sustantivo="movimientos"
+        (cambiar)="consultarMovimientos($event)"
+      />
+    }
+  } @else if (movimientos().cargando) {
+    <div class="text-muted-foreground px-6 py-10 text-center text-sm" aria-busy="true">
+      Cargando movimientos…
+    </div>
+  }
+</section>
+
+@if (registrando(); as tipo) {
+  <dialog
+    appDialogoModal
+    aria-labelledby="t-registrar-caja"
+    class="bg-card text-foreground backdrop:bg-overlay mx-0 mt-auto mb-0 w-full max-w-none rounded-t-3xl border border-b-0 p-0 shadow-2xl sm:m-auto sm:max-w-120 sm:rounded-2xl sm:border-b"
+    (cerrar)="cerrarRegistro()"
+  >
+    <form novalidate (submit)="$event.preventDefault(); registrar()">
+      <div class="px-6 pt-6 pb-2">
+        <h2 id="t-registrar-caja" class="text-xl font-extrabold">
+          {{ tipo === 'APORTACION' ? 'Aportar capital' : 'Registrar retiro' }}
+        </h2>
+        <p class="text-muted-foreground mt-1.5 text-sm">
+          {{
+            tipo === 'APORTACION'
+              ? 'Dinero que pones en caja para prestar, incluido el capital inicial. Suma al saldo.'
+              : 'Dinero que sacas de caja para ti o para gastos. Resta al saldo.'
+          }}
+        </p>
+      </div>
+      <div class="flex flex-col gap-3.5 px-6 py-3">
+        <div class="grid grid-cols-1 gap-3.5 sm:grid-cols-2">
+          <div>
+            <label class="mb-1.5 block text-[13px] font-bold" for="f-caja-importe">Importe</label>
+            <input
+              id="f-caja-importe"
+              class="entrada tabular-nums"
+              inputmode="decimal"
+              autocomplete="off"
+              placeholder="0.00"
+              [value]="importe()"
+              [attr.aria-invalid]="!!erroresMovimiento().importe || null"
+              aria-describedby="f-caja-importe-error"
+              (input)="importe.set(texto($event))"
+            />
+            @if (erroresMovimiento().importe; as e) {
+              <p id="f-caja-importe-error" class="text-destructive mt-1.5 text-xs font-semibold">
+                {{ e }}
+              </p>
+            }
+          </div>
+          <div>
+            <label class="mb-1.5 block text-[13px] font-bold" for="f-caja-fecha">Fecha</label>
+            <input
+              id="f-caja-fecha"
+              class="entrada"
+              type="date"
+              [max]="hoy"
+              [value]="fecha()"
+              [attr.aria-invalid]="!!erroresMovimiento().fecha || null"
+              aria-describedby="f-caja-fecha-error"
+              (input)="fecha.set(texto($event))"
+            />
+            @if (erroresMovimiento().fecha; as e) {
+              <p id="f-caja-fecha-error" class="text-destructive mt-1.5 text-xs font-semibold">
+                {{ e }}
+              </p>
+            }
+          </div>
+        </div>
+        <div>
+          <label class="mb-1.5 block text-[13px] font-bold" for="f-caja-concepto">Concepto</label>
+          <input
+            id="f-caja-concepto"
+            class="entrada"
+            autocomplete="off"
+            [attr.maxlength]="conceptoMaximo"
+            [placeholder]="
+              tipo === 'APORTACION' ? 'Ej.: Capital inicial' : 'Ej.: Gastos de gasolina'
+            "
+            [value]="concepto()"
+            [attr.aria-invalid]="!!erroresMovimiento().concepto || null"
+            aria-describedby="f-caja-concepto-error"
+            (input)="concepto.set(texto($event))"
+          />
+          @if (erroresMovimiento().concepto; as e) {
+            <p id="f-caja-concepto-error" class="text-destructive mt-1.5 text-xs font-semibold">
+              {{ e }}
+            </p>
+          }
+        </div>
+        @if (errorRegistrar()) {
+          <p
+            role="alert"
+            class="bg-destructive-soft text-destructive rounded-lg px-3.5 py-2.5 text-sm font-semibold"
+          >
+            {{ errorRegistrar() }}
+          </p>
+        }
+      </div>
+      <div class="flex flex-col-reverse gap-3 border-t px-6 pt-4 pb-6 sm:flex-row sm:justify-end">
+        <button
+          type="button"
+          class="btn-secundario"
+          [disabled]="enviando()"
+          (click)="cerrarRegistro()"
+        >
+          Cancelar
+        </button>
+        <button type="submit" class="btn-primario" [disabled]="enviando()">
+          {{ enviando() ? 'Guardando…' : 'Guardar' }}
+        </button>
+      </div>
+    </form>
+  </dialog>
+}
+
+@if (cancelando(); as m) {
+  <dialog
+    appDialogoModal
+    aria-labelledby="t-cancelar-caja"
+    class="bg-card text-foreground backdrop:bg-overlay mx-0 mt-auto mb-0 w-full max-w-none rounded-t-3xl border border-b-0 p-0 shadow-2xl sm:m-auto sm:max-w-120 sm:rounded-2xl sm:border-b"
+    (cerrar)="cerrarCancelar()"
+  >
+    <div class="px-6 pt-6 pb-2">
+      <h2 id="t-cancelar-caja" class="text-xl font-extrabold">
+        ¿Cancelar {{ m.tipo === 'APORTACION' ? 'la aportación' : 'el retiro' }} de
+        {{ importeCancelar(m) }}?
+      </h2>
+      <p class="text-muted-foreground mt-1.5 text-sm">
+        No se borra: queda cancelado en la lista y deja de contar en el saldo.
+      </p>
+    </div>
+    <div class="flex flex-col gap-3.5 px-6 py-3">
+      <div>
+        <label class="mb-1.5 block text-[13px] font-bold" for="f-caja-motivo"
+          >Motivo de la cancelación</label
+        >
+        <textarea
+          id="f-caja-motivo"
+          class="entrada min-h-22 resize-y py-2.5"
+          [attr.maxlength]="motivoMaximo"
+          placeholder="Ej.: se capturó dos veces; el importe era otro."
+          aria-describedby="f-caja-motivo-ayuda"
+          [attr.aria-invalid]="!!errorMotivo() || null"
+          [value]="motivo()"
+          (input)="motivo.set(texto($event))"
+        ></textarea>
+        <p
+          id="f-caja-motivo-ayuda"
+          class="mt-1.5 text-xs"
+          [class]="errorMotivo() ? 'text-destructive font-semibold' : 'text-muted-foreground'"
+        >
+          {{ errorMotivo() || motivo().length + '/' + motivoMaximo }}
+        </p>
+      </div>
+      @if (errorCancelar()) {
+        <p
+          role="alert"
+          class="bg-destructive-soft text-destructive rounded-lg px-3.5 py-2.5 text-sm font-semibold"
+        >
+          {{ errorCancelar() }}
+        </p>
+      }
+    </div>
+    <div class="flex flex-col-reverse gap-3 border-t px-6 pt-4 pb-6 sm:flex-row sm:justify-end">
+      <button
+        type="button"
+        class="btn-secundario"
+        [disabled]="enviando()"
+        (click)="cerrarCancelar()"
+      >
+        No, volver
+      </button>
+      <button type="button" class="btn-peligro" [disabled]="enviando()" (click)="cancelar()">
+        {{ enviando() ? 'Cancelando…' : 'Sí, cancelar' }}
+      </button>
+    </div>
+  </dialog>
+}

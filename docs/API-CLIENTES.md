@@ -10,9 +10,9 @@ Estado al 2026-10-30:
 | `GET cliente-lst`                 | ✅ Existe         | Lista de clientes          |
 | `POST cliente-agregar`            | ✅ Existe         | Alta                       |
 | `PUT cliente-actualizar/{id}`     | ✅ Hecho (sin MySQL) | Editar                  |
-| `PUT cliente-baja/{id}`           | ⏳ Pendiente      | Dar de baja                |
-| `PUT cliente-reactivar/{id}`      | ⏳ Pendiente      | Reactivar                  |
-| Campo `estatusCliente`            | ⏳ Pendiente      | Filtros Activos/Inactivos  |
+| `PUT cliente-baja/{id}`           | ✅ Hecho (V8)     | Dar de baja                |
+| `PUT cliente-reactivar/{id}`      | ✅ Hecho (V8)     | Reactivar                  |
+| Campo `estatusCliente`            | ✅ Hecho (V8)     | Filtros Activos/Inactivos  |
 
 > **Los clientes nunca se eliminan.** Solo se dan de baja (`estatusCliente = "INACTIVO"`) para
 > conservar su historial de préstamos y pagos. No debe existir un `DELETE`.
@@ -177,7 +177,7 @@ la CURP: así se completa su expediente la próxima vez que venga.
 
 ---
 
-## `PUT /cliente-baja/{idCliente}` ⏳
+## `PUT /cliente-baja/{idCliente}` ✅
 
 Pone `estatusCliente = "INACTIVO"`. Sin cuerpo.
 
@@ -195,7 +195,7 @@ Pone `estatusCliente = "INACTIVO"`. Sin cuerpo.
 
 ---
 
-## `PUT /cliente-reactivar/{idCliente}` ⏳
+## `PUT /cliente-reactivar/{idCliente}` ✅
 
 Pone `estatusCliente = "ACTIVO"`. Sin cuerpo.
 

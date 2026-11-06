@@ -244,7 +244,10 @@ export class Convenios {
     };
   });
 
-  /** Hoja "Convenio de pago": el mismo formato que la simulación, sin la fórmula. */
+  /**
+   * Hoja "Convenio de pago": el mismo formato que la simulación, sin la fórmula. Va para el cliente:
+   * no lleva folio ni ids de préstamo (la pantalla sí).
+   */
   protected readonly hoja = computed<Simulacion | undefined>(() => {
     const d = this.datosDetalle();
     if (!d) return undefined;
@@ -252,13 +255,12 @@ export class Convenios {
     return {
       titulo: 'Convenio de pago',
       cliente: c.titular.nombreCompleto,
-      emision: `${c.folio} · ${formatoLargo.format(new Date(c.fechaRegistro))}`,
+      emision: formatoLargo.format(new Date(c.fechaRegistro)),
       cuota: formatearMoneda(c.importeCuota),
       detalle: `× ${String(c.numeroPagos)} pagos ${c.modalidad.descripcion.toLowerCase()}`,
       datos: [
         { etiqueta: 'Saldo convenido', valor: formatearMoneda(c.saldoConvenido) },
         { etiqueta: 'Interés', valor: this.interes(d) },
-        { etiqueta: 'Préstamo del convenio', valor: `#${String(c.idPrestamoConvenio)}` },
         { etiqueta: 'Primer pago', valor: formatearFecha(d.fechaPrimerPago) },
       ],
       etiquetaTotal: 'Total del convenio',

@@ -3,13 +3,21 @@ import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@a
 import { mensajeDeError } from '@/core/api/api-error';
 import { descargarCsv } from '@/core/csv';
 import { formatearFecha, formatearMoneda, iniciales } from '@/core/format';
+import { AvisosService } from '@/core/ui/avisos.service';
 import { claseAvatar } from '@/core/ui/avatar';
 import { Icono } from '@/core/ui/icono';
 import { hoyIso } from '@/features/prestamos/calculo-prestamo';
 import { centavos } from '@/features/cobranza/captura-pago';
 import { etiquetaMetodo, TIPOS_PAGO } from '@/features/cobranza/cobranza-api';
+import { CobranzaService } from '@/features/cobranza/cobranza.service';
 import { textoCuotas, textoPagos } from '@/features/cobranza/cobranza-vista';
-import { horaRegistro, rangoPagos } from '@/features/cobranza/recibo';
+import {
+  horaRegistro,
+  rangoPagos,
+  type Recibo,
+  reciboDeOperacion,
+} from '@/features/cobranza/recibo';
+import { ReciboDialogo } from '@/features/cobranza/recibo-dialogo';
 import type { ReporteCartera, ReporteCobranza } from '@/features/reportes/reportes-api';
 import {
   BARRA,
@@ -25,13 +33,15 @@ import {
   PERIODOS,
   periodoRapido,
 } from '@/features/reportes/reportes-vista';
+import { Caja } from '@/features/reportes/caja';
 import { ReportesService } from '@/features/reportes/reportes.service';
 
-type Pestana = 'cobranza' | 'cartera';
+type Pestana = 'cobranza' | 'cartera' | 'caja';
 
 const PESTANAS: readonly { id: Pestana; etiqueta: string }[] = [
   { id: 'cobranza', etiqueta: 'Cobranza por periodo' },
   { id: 'cartera', etiqueta: 'Cartera' },
+  { id: 'caja', etiqueta: 'Saldo de caja' },
 ];
 
 interface Consulta<T> {
@@ -53,7 +63,7 @@ function diaCorto(fechaIso: string): string {
 /** Reportes: cobranza por periodo y cartera (vencida y por vencer), con exportación a CSV. */
 @Component({
   selector: 'app-reportes',
-  imports: [Icono],
+  imports: [Caja, Icono, ReciboDialogo],
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { class: 'flex flex-col gap-6' },
   templateUrl: './reportes.html',
@@ -61,6 +71,8 @@ function diaCorto(fechaIso: string): string {
 export class Reportes {
   private readonly servicio = inject(ReportesService);
   private readonly documento = inject(DOCUMENT);
+  private readonly cobranzaServicio = inject(CobranzaService);
+  private readonly avisos = inject(AvisosService);
 
   protected readonly hoy = hoyIso();
   protected readonly periodos = PERIODOS;
@@ -70,6 +82,10 @@ export class Reportes {
   /** Día bajo el cursor en la gráfica; sin cursor se describe el día con más cobro. */
   protected readonly diaActivo = signal<number | undefined>(undefined);
   protected readonly pestana = signal<Pestana>('cobranza');
+  /** Folio cuyo recibo se está consultando para reimprimir. */
+  protected readonly reimprimiendo = signal('');
+  /** Recibo reimpreso abierto en el diálogo. */
+  protected readonly recibo = signal<Recibo | undefined>(undefined);
 
   protected readonly periodo = signal<Periodo>(periodoRapido('mes', this.hoy));
   protected readonly periodoElegido = signal<IdPeriodo | undefined>('mes');
@@ -256,6 +272,19 @@ export class Reportes {
         cargando: false,
         error: mensajeDeError(error, 'No se pudo generar el reporte de cartera.'),
       }));
+    }
+  }
+
+  /** Abre el recibo de un pago del periodo con los datos guardados al cobrar (GET /recibo/{folio}). */
+  protected async reimprimir(folio: string): Promise<void> {
+    if (this.reimprimiendo()) return;
+    this.reimprimiendo.set(folio);
+    try {
+      this.recibo.set(reciboDeOperacion(await this.cobranzaServicio.recibo(folio)));
+    } catch (error) {
+      this.avisos.error(mensajeDeError(error, 'No se pudo cargar el recibo. Intenta de nuevo.'));
+    } finally {
+      this.reimprimiendo.set('');
     }
   }
 

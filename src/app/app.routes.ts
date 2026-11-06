@@ -16,44 +16,44 @@ export const routes: Routes = [
       {
         path: '',
         pathMatch: 'full',
-        title: 'Inicio · Credi Express',
+        title: 'Inicio · Crédito Expres',
         loadComponent: () => import('@/features/inicio/inicio').then((m) => m.Inicio),
       },
       {
         path: 'clientes',
-        title: 'Clientes · Credi Express',
+        title: 'Clientes · Crédito Expres',
         loadComponent: () => import('@/features/clientes/clientes').then((m) => m.Clientes),
       },
       {
         path: 'prestamos',
-        title: 'Préstamos · Credi Express',
+        title: 'Préstamos · Crédito Expres',
         loadComponent: () => import('@/features/prestamos/prestamos').then((m) => m.Prestamos),
       },
       {
         path: 'prestamos/nuevo',
-        title: 'Nuevo préstamo · Credi Express',
+        title: 'Nuevo préstamo · Crédito Expres',
         loadComponent: () =>
           import('@/features/prestamos/nuevo-prestamo').then((m) => m.NuevoPrestamo),
       },
       {
         path: 'convenios',
-        title: 'Convenios · Credi Express',
+        title: 'Convenios · Crédito Expres',
         loadComponent: () => import('@/features/convenios/convenios').then((m) => m.Convenios),
       },
       {
         path: 'convenios/nuevo',
-        title: 'Nuevo convenio · Credi Express',
+        title: 'Nuevo convenio · Crédito Expres',
         loadComponent: () =>
           import('@/features/convenios/nuevo-convenio').then((m) => m.NuevoConvenio),
       },
       {
         path: 'cobranza',
-        title: 'Cobranza · Credi Express',
+        title: 'Cobranza · Crédito Expres',
         loadComponent: () => import('@/features/cobranza/cobranza').then((m) => m.Cobranza),
       },
       {
         path: 'reportes',
-        title: 'Reportes · Credi Express',
+        title: 'Reportes · Crédito Expres',
         loadComponent: () => import('@/features/reportes/reportes').then((m) => m.Reportes),
       },
     ],

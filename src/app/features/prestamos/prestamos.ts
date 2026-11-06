@@ -194,7 +194,7 @@ export class Prestamos {
       error: error ? mensajeDeError(error, 'No se pudo cargar el calendario.') : '',
       datos: d && {
         cliente: d.prestamo.cliente.nombreCompleto,
-        subtitulo: `Préstamo #${String(id)} · ${String(d.prestamo.numeroCuotas)} pagos · ${d.prestamo.modalidad.descripcion}`,
+        subtitulo: `${String(d.prestamo.numeroCuotas)} pagos · ${d.prestamo.modalidad.descripcion}`,
         estado: estadoDe(d.prestamo),
         total: formatearMoneda(d.prestamo.totalPagar),
         saldo: formatearMoneda(d.prestamo.saldoPendiente),

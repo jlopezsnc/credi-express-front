@@ -2,14 +2,15 @@
   <p class="text-muted-foreground mb-1.5 text-[13px] font-semibold">Operación / Reportes</p>
   <h1 class="text-[26px] font-extrabold tracking-tight lg:text-[32px]">Reportes</h1>
   <p class="text-muted-foreground mt-1.5 text-sm">
-    Cobranza por periodo y estado de la cartera. Se exportan a CSV para abrirlos en Excel.
+    Cobranza por periodo, estado de la cartera y saldo de caja. Se exportan a CSV para abrirlos en
+    Excel.
   </p>
 </header>
 
 <div
   role="tablist"
   aria-label="Tipo de reporte"
-  class="bg-muted grid w-full grid-cols-2 gap-1 rounded-xl border p-1 sm:max-w-110"
+  class="bg-muted grid w-full grid-cols-3 gap-1 rounded-xl border p-1 sm:max-w-150"
 >
   @for (p of pestanas; track p.id) {
     @let activo = pestana() === p.id;
@@ -237,6 +238,7 @@
               <th scope="col">Pago</th>
               <th scope="col">Método</th>
               <th scope="col" class="text-right">Total recibido</th>
+              <th scope="col" class="text-right">Recibo</th>
             </tr>
           </thead>
           <tbody>
@@ -264,6 +266,20 @@
                     >
                   }
                 </td>
+                <td class="text-right">
+                  @if (!o.cancelado) {
+                    <button
+                      type="button"
+                      class="btn-secundario"
+                      [attr.aria-label]="'Reimprimir recibo ' + o.folio"
+                      [disabled]="reimprimiendo() !== ''"
+                      (click)="reimprimir(o.folio)"
+                    >
+                      <app-icono nombre="imprimir" class="size-4" />
+                      {{ reimprimiendo() === o.folio ? 'Cargando…' : 'Reimprimir' }}
+                    </button>
+                  }
+                </td>
               </tr>
             }
           </tbody>
@@ -282,7 +298,7 @@
       Generando reporte…
     </div>
   }
-} @else {
+} @else if (pestana() === 'cartera') {
   @if (cartera().error; as error) {
     <div
       role="alert"
@@ -421,4 +437,10 @@
       Generando reporte…
     </div>
   }
+} @else {
+  <app-caja />
+}
+
+@if (recibo(); as r) {
+  <app-recibo-dialogo [recibo]="r" (cerrar)="recibo.set(undefined)" />
 }

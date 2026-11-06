@@ -28,3 +28,6 @@ Thumbs.db
 mySSHKey
 mySSHKey.pub
 *.pem
+
+# Caché de la CLI de Firebase
+.firebase/

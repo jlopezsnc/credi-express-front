@@ -1,11 +1,13 @@
 {
-  "name": "Credi Express",
-  "short_name": "CrediExpress",
+  "name": "Crédito Expres",
+  "short_name": "Crédito Expres",
   "description": "Administración de préstamos y cobranza",
   "lang": "es-MX",
   "theme_color": "#0f766e",
   "background_color": "#ffffff",
   "display": "standalone",
   "start_url": "/",
-  "icons": [{ "src": "favicon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }]
+  "icons": [
+    { "src": "credito-express.jpg", "sizes": "172x127", "type": "image/jpeg", "purpose": "any" }
+  ]
 }

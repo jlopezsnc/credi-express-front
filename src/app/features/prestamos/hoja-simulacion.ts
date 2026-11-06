@@ -16,7 +16,10 @@ export interface Simulacion {
   datos: readonly { etiqueta: string; valor: string }[];
   etiquetaTotal: string;
   total: string;
-  /** Préstamos que se juntan en un convenio; vacío en una simulación de préstamo. */
+  /**
+   * Préstamos que se juntan en un convenio; vacío en una simulación de préstamo. El id solo sirve
+   * para el `track`: la hoja numera 1, 2, 3… porque el cliente no debe ver el id del préstamo.
+   */
   prestamos: readonly { id: number; cliente: string; saldo: string }[];
   filas: readonly { numero: number; fecha: string; importe: string }[];
   notaUltimoPago: string;

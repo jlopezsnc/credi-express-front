@@ -316,6 +316,10 @@ describe('NuevoConvenio', () => {
       expect(hoja).toContain('Préstamos que se convienen');
       expect(hoja).toContain('Ana Sofía López Ruiz');
       expect(hoja).toContain('Total del convenio');
+      expect(hoja).not.toMatch(/#s*d/);
+      expect(pantalla.querySelector('app-hoja-simulacion table tbody td')?.textContent.trim()).toBe(
+        '1',
+      );
       expect(hoja).not.toContain('Interés =');
       expect(
         pantalla.querySelectorAll('app-hoja-simulacion table')[1]?.querySelectorAll('tbody tr'),

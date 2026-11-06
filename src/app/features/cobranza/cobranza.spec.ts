@@ -357,6 +357,7 @@ describe('Cobranza', () => {
       'PAGO_MARIA_FERNANDA_LOPEZ_RUIZ_RECIBO_7_de_8.png',
     );
     expect(dialogo().textContent).toContain('Recibo creado');
+    expect(dialogo().textContent).not.toContain('REIMPRESIÓN');
 
     boton('Listo').click();
     await esperar();
@@ -551,6 +552,7 @@ describe('Cobranza', () => {
     expect(dialogo().textContent).toContain('Préstamo liquidado');
     expect(dialogo().textContent).toContain('P-000240');
     expect(dialogo().textContent).not.toContain('adeudos');
+    expect(dialogo().textContent).toContain('REIMPRESIÓN');
     boton('Crear recibo').click();
     await esperar();
     expect(png.descargar).toHaveBeenCalledWith(

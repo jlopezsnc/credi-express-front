@@ -1,7 +1,8 @@
-import { ChangeDetectionStrategy, Component, inject, input, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, input, signal } from '@angular/core';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
 import { AuthService } from '@/core/auth/auth.service';
+import { esMotivoCierre, MENSAJE_CIERRE } from '@/core/auth/sesion';
 
 /** Solo se aceptan rutas internas para evitar redirecciones abiertas (`//sitio-malicioso.com`). */
 function rutaSegura(ruta: string | undefined): string {
@@ -20,6 +21,13 @@ export class Login {
 
   /** Ruta a la que se regresa después de entrar (query param `?desde=`). */
   readonly desde = input<string>();
+  /** Por qué se cerró la sesión (query param `?motivo=`, lo pone `SesionService`). */
+  readonly motivo = input<string>();
+
+  protected readonly avisoCierre = computed(() => {
+    const motivo = this.motivo();
+    return esMotivoCierre(motivo) ? MENSAJE_CIERRE[motivo] : undefined;
+  });
 
   protected readonly form = new FormGroup({
     correo: new FormControl('', {

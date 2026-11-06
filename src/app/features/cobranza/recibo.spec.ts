@@ -100,7 +100,8 @@ describe('reciboDePago', () => {
       { etiqueta: 'Importe recibido', valor: '$710.00 MXN', fuerte: true },
     ]);
     expect(recibo.saldo).toBe('Cuota liquidada');
-    expect(recibo.filas.map((f) => f.valor)).toContain('Préstamo #12 · Pago 2 de 8');
+    expect(recibo.filas).toContainEqual({ etiqueta: 'Préstamo', valor: 'Pago 2 de 8' });
+    expect(JSON.stringify(recibo)).not.toContain('#');
     expect(recibo.registro).toContain('29 de octubre de 2026');
     expect(recibo.archivo).toBe('PAGO_JOSE_ANTONIO_HERNANDEZ_CRUZ_RECIBO_2_de_8.png');
   });
@@ -137,6 +138,7 @@ describe('reciboDePago', () => {
 describe('reciboDeLiquidacion', () => {
   it('usa un folio, el rango de cuotas y el total de cuotas del préstamo', () => {
     const recibo = reciboDeLiquidacion(LIQUIDACION, SALDO);
+    expect(JSON.stringify(recibo)).not.toContain('#');
     expect(recibo.titulo).toBe('Préstamo liquidado');
     expect(recibo.folio).toBe('P-000240');
     expect(recibo.filas.map((f) => f.valor)).toContain('Pagos 7 a 8 de 8');
@@ -156,7 +158,7 @@ describe('reciboDeLiquidacion', () => {
 });
 
 describe('reciboDeOperacion (reimpresión)', () => {
-  it('un pago se reimprime igual que al cobrarlo', () => {
+  it('un pago se reimprime igual que al cobrarlo, con la leyenda de reimpresión', () => {
     const original = reciboDePago(pago());
     const copia = reciboDeOperacion({
       tipo: 'CUOTA_COMPLETA',
@@ -165,7 +167,8 @@ describe('reciboDeOperacion (reimpresión)', () => {
       pago: pago(),
       liquidacion: null,
     });
-    expect(copia).toEqual(original);
+    expect(original.reimpresion).toBe(false);
+    expect(copia).toEqual({ ...original, reimpresion: true });
   });
 
   it('una liquidación usa la modalidad y el total del préstamo, sin la nota del momento del cobro', () => {

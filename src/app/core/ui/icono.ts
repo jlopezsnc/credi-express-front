@@ -54,7 +54,7 @@ export type NombreIcono =
       @switch (nombre()) {
         @case ('marca') {
           <path d="M17 7.5A6.5 6.5 0 1 0 17 16.5" />
-          <path d="M12 9.5v5M10 12h4" />
+          <path d="M9 12h11M17 9l3 3-3 3" />
         }
         @case ('inicio') {
           <path d="M3.5 10.5 12 3.5l8.5 7" />

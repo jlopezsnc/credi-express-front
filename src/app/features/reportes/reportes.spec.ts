@@ -3,6 +3,7 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { type ComponentFixture, TestBed } from '@angular/core/testing';
 import { errorInterceptor } from '@/core/api/error.interceptor';
 import { hoyIso } from '@/features/prestamos/calculo-prestamo';
+import type { ReciboOperacion } from '@/features/cobranza/cobranza-api';
 import type { ReporteCartera, ReporteCobranza } from '@/features/reportes/reportes-api';
 import { Reportes } from '@/features/reportes/reportes';
 
@@ -64,6 +65,54 @@ const COBRANZA: ReporteCobranza = {
       estatus: 'CANCELADO',
     },
   ],
+};
+
+// Un pago vigente de días anteriores, para reimprimir su recibo.
+const VIGENTE: ReporteCobranza['operaciones'][number] = {
+  folio: 'P-000003',
+  fechaRegistro: '2026-10-28T09:30:00-06:00',
+  fechaPago: '2026-10-28',
+  cliente: ANA,
+  idPrestamo: 12,
+  cuotaInicial: 7,
+  cuotaFinal: 8,
+  totalCuotas: 8,
+  tipo: 'LIQUIDACION',
+  metodoPago: 'EFECTIVO',
+  referencia: null,
+  importe: '1820.00',
+  recargo: '0.00',
+  totalRecibido: '1820.00',
+  registradoPor: 'cobrador@ejemplo.com',
+  estatus: 'VIGENTE',
+};
+
+const RECIBO: ReciboOperacion = {
+  tipo: 'LIQUIDACION',
+  modalidad: { idModalidad: 2, descripcion: 'Quincenal' },
+  totalCuotas: 8,
+  pago: null,
+  liquidacion: {
+    folio: 'P-000003',
+    idPrestamo: 12,
+    cliente: ANA,
+    cuotasLiquidadas: 2,
+    importe: '1820.00',
+    recargo: '0.00',
+    totalRecibido: '1820.00',
+    fechaPago: '2026-10-28',
+    metodoPago: 'EFECTIVO',
+    referencia: null,
+    nota: null,
+    pagos: [
+      { idPago: 3, idCuota: 101, numeroCuota: 7, importe: '710.00' },
+      { idPago: 4, idCuota: 102, numeroCuota: 8, importe: '1110.00' },
+    ],
+    prestamoLiquidado: true,
+    clienteSinAdeudos: null,
+    registradoPor: 'cobrador@ejemplo.com',
+    fechaRegistro: '2026-10-28T09:30:00-06:00',
+  },
 };
 
 const CARTERA: ReporteCartera = {
@@ -160,6 +209,32 @@ describe('Reportes', () => {
 
     boton('Exportar CSV').click();
     expect(descargas).toEqual(['COBRANZA_2026-10-28_a_2026-10-30.csv']);
+  });
+
+  it('reimprime el recibo de un pago de días anteriores; los cancelados no tienen botón', async () => {
+    http
+      .expectOne((r) => r.url === `${BASE}/cobranza`)
+      .flush(sobre({ ...COBRANZA, operaciones: [...COBRANZA.operaciones, VIGENTE] }));
+    await esperar();
+
+    expect(pantalla.querySelector('[aria-label="Reimprimir recibo P-000004"]')).toBeNull();
+    const reimprimir = pantalla.querySelector<HTMLButtonElement>(
+      '[aria-label="Reimprimir recibo P-000003"]',
+    );
+    if (!reimprimir) throw new Error('No hay botón para reimprimir P-000003');
+    reimprimir.click();
+    await esperar();
+
+    http.expectOne('/api/operaciones-cobranza/recibo/P-000003').flush(sobre(RECIBO));
+    await esperar();
+
+    const dialogo = pantalla.querySelector('dialog');
+    expect(dialogo?.textContent).toContain('P-000003');
+    expect(dialogo?.textContent).toContain('ANA RUIZ');
+    expect(dialogo?.textContent).toContain('REIMPRESIÓN');
+    boton('Listo').click();
+    await esperar();
+    expect(pantalla.querySelector('dialog')).toBeNull();
   });
 
   it('no consulta con un periodo inválido', async () => {

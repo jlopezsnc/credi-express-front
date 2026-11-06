@@ -11,7 +11,7 @@
       @if (logoUrl && !logoFallo()) {
         <img
           [src]="logoUrl"
-          alt="Logotipo de Credi Express"
+          alt="Logotipo de Crédito Expres"
           class="h-11 max-w-40 shrink-0 object-contain"
           (error)="logoFallo.set(true)"
         />
@@ -23,7 +23,7 @@
         </span>
       }
       <span class="min-w-0">
-        <span class="block text-[17px] font-extrabold">Credi Express</span>
+        <span class="block text-[17px] font-extrabold">Crédito Expres</span>
         <span class="text-muted-foreground block text-xs">Préstamos y cobranza</span>
       </span>
     </div>
@@ -41,6 +41,12 @@
     </span>
     <h2 id="t-recibo" class="text-xl font-extrabold">{{ r.titulo }}</h2>
     <p class="text-muted-foreground text-[13px]">Registrado el {{ r.registro }}</p>
+    @if (r.reimpresion) {
+      <span
+        class="bg-aviso-soft text-aviso rounded-full px-3 py-0.5 text-[11px] font-bold tracking-widest"
+        >REIMPRESIÓN</span
+      >
+    }
   </div>
 
   <dl class="flex flex-col gap-2.5 px-6 py-4 text-sm">
