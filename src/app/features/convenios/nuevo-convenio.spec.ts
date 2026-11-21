@@ -226,6 +226,39 @@ describe('NuevoConvenio', () => {
     await esperar();
   });
 
+  it('la fecha del primer pago empieza en hoy, no se mueve con la periodicidad y tiene tope', async () => {
+    const entrada = (): HTMLInputElement | null =>
+      pantalla.querySelector<HTMLInputElement>('#f-inicio');
+    const hoy = entrada()?.value ?? '';
+    expect(hoy).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    expect(entrada()?.min).toBe(hoy);
+
+    // Quincenal: lista con solo los cortes (15 y 30); la fecha no se cambia sola.
+    boton('Quincenal').click();
+    await esperar();
+    const lista = pantalla.querySelector<HTMLSelectElement>('select#f-inicio');
+    if (!lista) throw new Error('En quincenal la fecha se elige de una lista');
+    const cortes = [...lista.options].map((o) => o.value).filter(Boolean);
+    expect(cortes.length).toBeGreaterThanOrEqual(2);
+    expect(lista.value).toBe(cortes.includes(hoy) ? hoy : '');
+    if (!cortes.includes(hoy)) {
+      expect(texto('#f-inicio-ayuda')).toContain('15 o el 30');
+    }
+
+    boton('Semanal').click();
+    await esperar();
+    expect(entrada()?.value).toBe(hoy);
+
+    const fuera = new Date(`${entrada()?.max ?? ''}T00:00:00Z`);
+    fuera.setUTCDate(fuera.getUTCDate() + 1);
+    const campo = entrada();
+    if (!campo) throw new Error('No hay fecha del primer pago');
+    campo.value = fuera.toISOString().slice(0, 10);
+    campo.dispatchEvent(new Event('input'));
+    await esperar();
+    expect(texto('#f-inicio-ayuda')).toContain('no puede ser más de 31 días después de hoy');
+  });
+
   it('pide el plan al back sin interés y lo muestra', async () => {
     const simulacion = await conPlan();
 

@@ -117,11 +117,99 @@ export function hoyIso(ahora = new Date()): string {
   return `${String(ahora.getFullYear())}-${mes}-${dia}`;
 }
 
-/** Fecha del pago número `indice` (0 = primer pago) a partir de la fecha del primer pago. */
-export function fechaDePago(inicioIso: string, p: Periodicidad, indice: number): string {
-  const fecha = new Date(`${inicioIso}T00:00:00Z`);
-  fecha.setUTCDate(fecha.getUTCDate() + p.dias * indice);
+/** "2026-11-21" + 31 → "2026-12-22" (en UTC: sin saltos por horario de verano). */
+export function sumarDias(iso: string, dias: number): string {
+  const fecha = new Date(`${iso}T00:00:00Z`);
+  fecha.setUTCDate(fecha.getUTCDate() + dias);
   return fecha.toISOString().slice(0, 10);
+}
+
+const DIA_PRIMER_CORTE = 15;
+const DIA_SEGUNDO_CORTE = 30;
+
+/** Fecha `yyyy-MM-dd` del día `dia` del mes `mes0` (0 = enero; puede pasar de 11 y cambia de año). */
+function fechaDelMes(anio: number, mes0: number, dia: number): string {
+  return new Date(Date.UTC(anio, mes0, dia)).toISOString().slice(0, 10);
+}
+
+/** El 30 del mes, o su último día si el mes es más corto (febrero). `mes0` puede pasar de 11. */
+function segundoCorte(anio: number, mes0: number): string {
+  const ultimoDia = new Date(Date.UTC(anio, mes0 + 1, 0)).getUTCDate();
+  return fechaDelMes(anio, mes0, Math.min(DIA_SEGUNDO_CORTE, ultimoDia));
+}
+
+/**
+ * Si el primer pago puede caer en esa fecha. Semanal: cualquier día. Quincenal: solo en un corte,
+ * el 15 o el 30 (en febrero, el último día). Igual que el back (Periodicidad.esFechaDeInicio).
+ */
+export function esFechaDeInicio(iso: string, p: Periodicidad): boolean {
+  if (p.id === 'semanal') return true;
+  const [anio = 0, mes = 1, dia = 0] = iso.split('-').map(Number);
+  return dia === DIA_PRIMER_CORTE || iso === segundoCorte(anio, mes - 1);
+}
+
+/**
+ * Fecha del pago número `indice` (0 = primer pago), calculada siempre desde el primero. Semanal:
+ * cada 7 días. Quincenal: alterna el 15 y el 30 de cada mes (en febrero, el último día). Igual que
+ * el back (Periodicidad.fechaDePago).
+ */
+export function fechaDePago(inicioIso: string, p: Periodicidad, indice: number): string {
+  if (p.id === 'semanal') return sumarDias(inicioIso, p.dias * indice);
+  const [anio = 0, mes = 1, dia = 0] = inicioIso.split('-').map(Number);
+  const posicion = (dia === DIA_PRIMER_CORTE ? 0 : 1) + indice;
+  const mes0 = mes - 1 + Math.floor(posicion / 2);
+  return posicion % 2 === 0
+    ? fechaDelMes(anio, mes0, DIA_PRIMER_CORTE)
+    : segundoCorte(anio, mes0);
+}
+
+/** Cortes quincenales (15 y 30 / fin de febrero) entre dos fechas, ambas incluidas. */
+export function cortesQuincenales(desde: string, hasta: string): string[] {
+  const [anio = 0, mes = 1] = desde.split('-').map(Number);
+  const cortes: string[] = [];
+  for (let mes0 = mes - 1; ; mes0++) {
+    const primero = fechaDelMes(anio, mes0, DIA_PRIMER_CORTE);
+    if (primero > hasta) break;
+    const segundo = segundoCorte(anio, mes0);
+    for (const corte of [primero, segundo]) {
+      if (corte >= desde && corte <= hasta) cortes.push(corte);
+    }
+  }
+  return cortes;
+}
+
+/**
+ * Hasta cuántos días después de hoy puede caer el primer pago de un préstamo o convenio. Igual que
+ * el back (ReglaPrimerPago.MAXIMO_DIAS): una fecha lejana casi siempre es error de captura.
+ */
+export const MAXIMO_DIAS_PRIMER_PAGO = 31;
+
+/** Último día que se puede elegir como primer pago. */
+export function fechaMaximaPrimerPago(hoy: string): string {
+  return sumarDias(hoy, MAXIMO_DIAS_PRIMER_PAGO);
+}
+
+/** Fechas que se ofrecen como primer pago quincenal: los cortes de hoy al tope. */
+export function cortesPrimerPago(hoy: string): string[] {
+  return cortesQuincenales(hoy, fechaMaximaPrimerPago(hoy));
+}
+
+/** Por qué no sirve la fecha del primer pago ('' si sirve). `marcarVacia`: ya se intentó enviar. */
+export function errorFechaPrimerPago(
+  fecha: string,
+  hoy: string,
+  p: Periodicidad,
+  marcarVacia: boolean,
+): string {
+  if (!fecha) return marcarVacia ? 'Elige la fecha del primer pago.' : '';
+  if (fecha < hoy) return 'La fecha no puede ser anterior a hoy.';
+  if (fecha > fechaMaximaPrimerPago(hoy)) {
+    return `La fecha no puede ser más de ${String(MAXIMO_DIAS_PRIMER_PAGO)} días después de hoy.`;
+  }
+  if (!esFechaDeInicio(fecha, p)) {
+    return 'En pagos quincenales el primer pago debe ser el día 15 o el 30 (en febrero, el último día).';
+  }
+  return '';
 }
 
 export function textoMeses(meses: number): string {

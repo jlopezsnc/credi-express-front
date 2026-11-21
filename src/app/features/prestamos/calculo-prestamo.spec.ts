@@ -1,6 +1,9 @@
 import {
   aDecimal,
   calcularPrestamo,
+  cortesQuincenales,
+  errorFechaPrimerPago,
+  esFechaDeInicio,
   fechaDePago,
   hoyIso,
   leerDecimal,
@@ -74,9 +77,48 @@ describe('leerDecimal', () => {
 });
 
 describe('fechas y textos', () => {
-  it('suma 7 o 15 días por pago', () => {
+  const quincenal = periodicidad('quincenal');
+  const fechas = (inicio: string, n: number): string[] =>
+    Array.from({ length: n }, (_, i) => fechaDePago(inicio, quincenal, i));
+
+  it('los semanales suman 7 días por pago', () => {
     expect(fechaDePago('2026-12-28', periodicidad('semanal'), 1)).toBe('2027-01-04');
-    expect(fechaDePago('2026-02-10', periodicidad('quincenal'), 2)).toBe('2026-03-12');
+  });
+
+  // Mismos casos que el back (CalculadoraPrestamoTest): ambos deben dar las mismas fechas.
+  it('los quincenales caen el 15 y el 30 aunque el mes tenga 28 o 31 días', () => {
+    expect(fechas('2026-01-15', 12)).toEqual([
+      '2026-01-15', '2026-01-30', '2026-02-15', '2026-02-28', '2026-03-15', '2026-03-30',
+      '2026-04-15', '2026-04-30', '2026-05-15', '2026-05-30', '2026-06-15', '2026-06-30',
+    ]);
+  });
+
+  it('empieza en el 30 y cruza de año; en bisiesto usa el 29 de febrero', () => {
+    expect(fechas('2026-11-30', 8)).toEqual([
+      '2026-11-30', '2026-12-15', '2026-12-30', '2027-01-15',
+      '2027-01-30', '2027-02-15', '2027-02-28', '2027-03-15',
+    ]);
+    expect(fechas('2028-02-15', 3)).toEqual(['2028-02-15', '2028-02-29', '2028-03-15']);
+    expect(fechas('2027-02-28', 3)).toEqual(['2027-02-28', '2027-03-15', '2027-03-30']);
+  });
+
+  it('el primer pago quincenal solo puede ser un corte', () => {
+    expect(esFechaDeInicio('2026-12-15', quincenal)).toBe(true);
+    expect(esFechaDeInicio('2026-12-30', quincenal)).toBe(true);
+    expect(esFechaDeInicio('2026-12-31', quincenal)).toBe(false);
+    expect(esFechaDeInicio('2027-02-28', quincenal)).toBe(true);
+    expect(esFechaDeInicio('2028-02-28', quincenal)).toBe(false);
+    expect(esFechaDeInicio('2026-12-14', periodicidad('semanal'))).toBe(true);
+    expect(errorFechaPrimerPago('2026-12-14', '2026-11-21', quincenal, false)).toContain(
+      '15 o el 30',
+    );
+    expect(errorFechaPrimerPago('2026-12-15', '2026-11-21', quincenal, false)).toBe('');
+  });
+
+  it('ofrece los cortes entre dos fechas, cruzando de año', () => {
+    expect(cortesQuincenales('2026-11-21', '2026-12-22')).toEqual(['2026-11-30', '2026-12-15']);
+    expect(cortesQuincenales('2026-12-16', '2027-01-16')).toEqual(['2026-12-30', '2027-01-15']);
+    expect(cortesQuincenales('2027-02-01', '2027-03-04')).toEqual(['2027-02-15', '2027-02-28']);
   });
 
   it('da la fecha local como yyyy-MM-dd', () => {

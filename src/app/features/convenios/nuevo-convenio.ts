@@ -28,7 +28,9 @@ import {
 } from '@/features/convenios/convenio-api';
 import { ConveniosService } from '@/features/convenios/convenios.service';
 import {
-  fechaDePago,
+  cortesPrimerPago,
+  errorFechaPrimerPago,
+  fechaMaximaPrimerPago,
   hoyIso,
   type IdPeriodicidad,
   leerDecimal,
@@ -137,6 +139,12 @@ export class NuevoConvenio {
   protected readonly periodicidades = PERIODICIDADES;
   protected readonly columnas = COLUMNAS;
   protected readonly hoy = hoyIso();
+  protected readonly fechaMaxima = fechaMaximaPrimerPago(this.hoy);
+  /** En quincenal el primer pago se elige de esta lista: solo los cortes (15 y 30) de hoy al tope. */
+  protected readonly cortes = cortesPrimerPago(this.hoy).map((valor) => ({
+    valor,
+    texto: fechaLarga(valor),
+  }));
   protected readonly motivoMaximo = MOTIVO_MAXIMO;
 
   // Titular
@@ -278,7 +286,8 @@ export class NuevoConvenio {
   protected readonly periodicidadActual = computed(() => periodicidad(this.idPeriodicidad()));
   protected readonly pagos = signal(PAGOS_INICIAL);
   protected readonly tasa = signal('0');
-  protected readonly fechaInicio = signal(fechaDePago(this.hoy, periodicidad('semanal'), 1));
+  /** Empieza en hoy y no se mueve al cambiar la periodicidad o los pagos (evita errores de captura). */
+  protected readonly fechaInicio = signal(this.hoy);
   protected readonly motivo = signal('');
   /** Se intentó generar: a partir de aquí se marcan también los campos vacíos. */
   protected readonly intento = signal(false);
@@ -307,12 +316,19 @@ export class NuevoConvenio {
 
   protected readonly conInteres = computed(() => !this.errorTasa() && this.tasaNumero() > 0);
 
-  protected readonly errorFecha = computed(() => {
-    const fecha = this.fechaInicio();
-    if (!fecha) return this.intento() ? 'Elige la fecha del primer pago.' : '';
-    if (fecha < this.hoy) return 'La fecha no puede ser anterior a hoy.';
-    return '';
-  });
+  protected readonly esCorte = computed(() =>
+    this.cortes.some((c) => c.valor === this.fechaInicio()),
+  );
+
+  protected readonly ayudaFecha = computed(() =>
+    this.periodicidadActual().id === 'quincenal'
+      ? 'Los pagos caen el 15 y el 30 de cada mes (en febrero, el último día).'
+      : 'Los siguientes pagos se calculan a partir de esta fecha.',
+  );
+
+  protected readonly errorFecha = computed(() =>
+    errorFechaPrimerPago(this.fechaInicio(), this.hoy, this.periodicidadActual(), this.intento()),
+  );
 
   protected readonly errorTitular = computed(() => this.intento() && !this.titular());
   protected readonly errorSeleccion = computed(() => this.intento() && this.seleccion().size === 0);
@@ -527,12 +543,7 @@ export class NuevoConvenio {
 
   protected elegirPeriodicidad(id: IdPeriodicidad): void {
     if (id === this.idPeriodicidad()) return;
-    const anterior = this.periodicidadActual();
-    const nueva = periodicidad(id);
-    // Si la fecha seguía siendo la sugerida, se recorre a la sugerida de la nueva periodicidad.
-    if (this.fechaInicio() === fechaDePago(this.hoy, anterior, 1)) {
-      this.fechaInicio.set(fechaDePago(this.hoy, nueva, 1));
-    }
+    // La fecha del primer pago no se toca: solo cambia cuando la persona la elige.
     this.idPeriodicidad.set(id);
     this.verTodo.set(false);
   }
@@ -595,16 +606,15 @@ export class NuevoConvenio {
   }
 
   protected nuevoConvenio(): void {
-    const semanal = periodicidad('semanal');
     this.resultado.set(undefined);
     this.titularId.set(undefined);
     this.busquedaTitular.set('');
     this.busqueda.set('');
     this.seleccion.set(new Map());
-    this.idPeriodicidad.set(semanal.id);
+    this.idPeriodicidad.set('semanal');
     this.pagos.set(PAGOS_INICIAL);
     this.tasa.set('0');
-    this.fechaInicio.set(fechaDePago(this.hoy, semanal, 1));
+    this.fechaInicio.set(this.hoy);
     this.motivo.set('');
     this.intento.set(false);
     this.verTodo.set(false);

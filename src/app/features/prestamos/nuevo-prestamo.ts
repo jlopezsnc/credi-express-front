@@ -13,7 +13,10 @@ import {
   aDecimal,
   aPesos,
   calcularPrestamo,
+  cortesPrimerPago,
+  errorFechaPrimerPago,
   fechaDePago,
+  fechaMaximaPrimerPago,
   hoyIso,
   type IdPeriodicidad,
   leerDecimal,
@@ -75,6 +78,12 @@ export class NuevoPrestamo {
   protected readonly periodicidades = PERIODICIDADES;
   protected readonly hoy = hoyIso();
   protected readonly hoyTexto = fechaLarga(this.hoy);
+  protected readonly fechaMaxima = fechaMaximaPrimerPago(this.hoy);
+  /** En quincenal el primer pago se elige de esta lista: solo los cortes (15 y 30) de hoy al tope. */
+  protected readonly cortes = cortesPrimerPago(this.hoy).map((valor) => ({
+    valor,
+    texto: fechaLarga(valor),
+  }));
 
   protected readonly clienteId = signal<number | undefined>(undefined);
   protected readonly busqueda = signal('');
@@ -82,7 +91,11 @@ export class NuevoPrestamo {
   protected readonly tasa = signal(TASA_INICIAL);
   protected readonly idPeriodicidad = signal<IdPeriodicidad>('semanal');
   protected readonly plazos = signal(periodicidad('semanal').plazos[0] ?? 12);
-  protected readonly fechaInicio = signal(fechaDePago(this.hoy, periodicidad('semanal'), 1));
+  /**
+   * Empieza en hoy y solo cambia cuando la persona la elige en el calendario: cambiar la
+   * periodicidad o el número de pagos no la mueve (una fecha recorrida sola causó errores de captura).
+   */
+  protected readonly fechaInicio = signal(this.hoy);
   /** Se intentó generar: a partir de aquí se marcan también los campos vacíos. */
   protected readonly intento = signal(false);
   protected readonly verTodo = signal(false);
@@ -164,12 +177,19 @@ export class NuevoPrestamo {
     }));
   });
 
-  protected readonly errorFecha = computed(() => {
-    const fecha = this.fechaInicio();
-    if (!fecha) return this.intento() ? 'Elige la fecha del primer pago.' : '';
-    if (fecha < this.hoy) return 'La fecha no puede ser anterior a hoy.';
-    return '';
-  });
+  protected readonly esCorte = computed(() =>
+    this.cortes.some((c) => c.valor === this.fechaInicio()),
+  );
+
+  protected readonly ayudaFecha = computed(() =>
+    this.periodicidadActual().id === 'quincenal'
+      ? 'Los pagos caen el 15 y el 30 de cada mes (en febrero, el último día).'
+      : 'Los siguientes pagos se calculan a partir de esta fecha.',
+  );
+
+  protected readonly errorFecha = computed(() =>
+    errorFechaPrimerPago(this.fechaInicio(), this.hoy, this.periodicidadActual(), this.intento()),
+  );
 
   // Cálculo y calendario
 
@@ -306,12 +326,7 @@ export class NuevoPrestamo {
 
   protected elegirPeriodicidad(id: IdPeriodicidad): void {
     if (id === this.idPeriodicidad()) return;
-    const anterior = this.periodicidadActual();
     const nueva = periodicidad(id);
-    // Si la fecha seguía siendo la sugerida, se recorre a la sugerida de la nueva periodicidad.
-    if (this.fechaInicio() === fechaDePago(this.hoy, anterior, 1)) {
-      this.fechaInicio.set(fechaDePago(this.hoy, nueva, 1));
-    }
     this.idPeriodicidad.set(id);
     this.plazos.set(nueva.plazos[0] ?? this.plazos());
     this.verTodo.set(false);
@@ -376,7 +391,7 @@ export class NuevoPrestamo {
     this.tasa.set(TASA_INICIAL);
     this.idPeriodicidad.set(semanal.id);
     this.plazos.set(semanal.plazos[0] ?? 12);
-    this.fechaInicio.set(fechaDePago(this.hoy, semanal, 1));
+    this.fechaInicio.set(this.hoy);
     this.intento.set(false);
     this.verTodo.set(false);
   }

@@ -104,6 +104,60 @@ describe('NuevoPrestamo', () => {
     ]);
   });
 
+  it('la fecha del primer pago empieza en hoy y no se mueve al cambiar periodicidad o plazo', async () => {
+    const fecha = () => pantalla.querySelector<HTMLInputElement>('#f-inicio')?.value;
+    const hoy = fecha();
+    expect(hoy).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    expect(pantalla.querySelector<HTMLInputElement>('#f-inicio')?.min).toBe(hoy);
+
+    boton('16 semanas, 4 meses').click();
+    await fixture.whenStable();
+    expect(fecha()).toBe(hoy);
+
+    // Quincenal: solo se ofrecen cortes y la fecha no se cambia sola; hay que elegirla.
+    boton('Quincenal').click();
+    await fixture.whenStable();
+    const lista = pantalla.querySelector<HTMLSelectElement>('select#f-inicio');
+    if (!lista) throw new Error('En quincenal la fecha se elige de una lista');
+    const cortes = [...lista.options].map((o) => o.value).filter(Boolean);
+    expect(cortes.length).toBeGreaterThanOrEqual(2);
+    for (const corte of cortes) {
+      const dia = Number(corte.slice(8));
+      expect(dia === 15 || dia >= 28).toBe(true);
+    }
+    expect(lista.value).toBe(cortes.includes(hoy ?? '') ? hoy : '');
+
+    const elegido = cortes[0] ?? '';
+    lista.value = elegido;
+    lista.dispatchEvent(new Event('change'));
+    await fixture.whenStable();
+    boton('12 quincenas, 6 meses').click();
+    await fixture.whenStable();
+    expect(fecha()).toBe(elegido);
+
+    boton('Semanal').click();
+    await fixture.whenStable();
+    expect(fecha()).toBe(elegido);
+  });
+
+  it('no acepta un primer pago a más de 31 días de hoy', async () => {
+    const entrada = pantalla.querySelector<HTMLInputElement>('#f-inicio');
+    const maxima = entrada?.max ?? '';
+    expect(maxima).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+
+    escribir('#f-inicio', maxima);
+    await fixture.whenStable();
+    expect(pantalla.querySelector('#f-inicio-ayuda')?.textContent).not.toContain('no puede ser');
+
+    const fuera = new Date(`${maxima}T00:00:00Z`);
+    fuera.setUTCDate(fuera.getUTCDate() + 1);
+    escribir('#f-inicio', fuera.toISOString().slice(0, 10));
+    await fixture.whenStable();
+    expect(pantalla.querySelector('#f-inicio-ayuda')?.textContent).toContain(
+      'no puede ser más de 31 días después de hoy',
+    );
+  });
+
   it('recalcula todo al cambiar el interés mensual', async () => {
     escribir('#f-monto', '6000');
     await fixture.whenStable();
@@ -149,6 +203,12 @@ describe('NuevoPrestamo', () => {
     await fixture.whenStable();
     boton('8 quincenas, 4 meses').click();
     await fixture.whenStable();
+    const lista = pantalla.querySelector<HTMLSelectElement>('select#f-inicio');
+    const corte = lista?.options[1]?.value ?? '';
+    if (!lista || !corte) throw new Error('No hay cortes para el primer pago');
+    lista.value = corte;
+    lista.dispatchEvent(new Event('change'));
+    await fixture.whenStable();
     boton('Generar préstamo').click();
     await fixture.whenStable();
 
@@ -162,6 +222,7 @@ describe('NuevoPrestamo', () => {
       idCliente: '1',
       idModalidad: '2',
       numeroCuota: '8',
+      fechaInicioCredito: corte,
       importeCredito: '6000.00',
       tasaInteres: '12',
       interesGenerado: '2880.00',

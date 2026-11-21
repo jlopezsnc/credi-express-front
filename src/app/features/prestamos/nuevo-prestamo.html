@@ -293,22 +293,38 @@
           <label class="mb-1.5 block text-[13px] font-bold" for="f-inicio"
             >Fecha del primer pago</label
           >
-          <input
-            id="f-inicio"
-            class="entrada"
-            type="date"
-            aria-describedby="f-inicio-ayuda"
-            [min]="hoy"
-            [attr.aria-invalid]="!!errorFecha() || null"
-            [value]="fechaInicio()"
-            (input)="fechaInicio.set(texto($event))"
-          />
+          @if (periodicidadActual().id === 'quincenal') {
+            <select
+              id="f-inicio"
+              class="entrada"
+              aria-describedby="f-inicio-ayuda"
+              [attr.aria-invalid]="!!errorFecha() || null"
+              (change)="fechaInicio.set(texto($event))"
+            >
+              <option value="" [selected]="!esCorte()">Elige el 15 o el 30</option>
+              @for (c of cortes; track c.valor) {
+                <option [value]="c.valor" [selected]="c.valor === fechaInicio()">{{ c.texto }}</option>
+              }
+            </select>
+          } @else {
+            <input
+              id="f-inicio"
+              class="entrada"
+              type="date"
+              aria-describedby="f-inicio-ayuda"
+              [min]="hoy"
+              [max]="fechaMaxima"
+              [attr.aria-invalid]="!!errorFecha() || null"
+              [value]="fechaInicio()"
+              (input)="fechaInicio.set(texto($event))"
+            />
+          }
           <p
             id="f-inicio-ayuda"
             class="mt-1.5 text-xs"
             [class]="errorFecha() ? 'text-destructive font-semibold' : 'text-muted-foreground'"
           >
-            {{ errorFecha() || 'Los siguientes pagos se calculan a partir de esta fecha.' }}
+            {{ errorFecha() || ayudaFecha() }}
           </p>
         </div>
         <div>
