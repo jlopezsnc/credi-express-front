@@ -158,9 +158,7 @@ export function fechaDePago(inicioIso: string, p: Periodicidad, indice: number):
   const [anio = 0, mes = 1, dia = 0] = inicioIso.split('-').map(Number);
   const posicion = (dia === DIA_PRIMER_CORTE ? 0 : 1) + indice;
   const mes0 = mes - 1 + Math.floor(posicion / 2);
-  return posicion % 2 === 0
-    ? fechaDelMes(anio, mes0, DIA_PRIMER_CORTE)
-    : segundoCorte(anio, mes0);
+  return posicion % 2 === 0 ? fechaDelMes(anio, mes0, DIA_PRIMER_CORTE) : segundoCorte(anio, mes0);
 }
 
 /** Cortes quincenales (15 y 30 / fin de febrero) entre dos fechas, ambas incluidas. */

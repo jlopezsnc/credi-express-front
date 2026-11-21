@@ -457,7 +457,9 @@
             >
               <option value="" [selected]="!esCorte()">Elige el 15 o el 30</option>
               @for (c of cortes; track c.valor) {
-                <option [value]="c.valor" [selected]="c.valor === fechaInicio()">{{ c.texto }}</option>
+                <option [value]="c.valor" [selected]="c.valor === fechaInicio()">
+                  {{ c.texto }}
+                </option>
               }
             </select>
           } @else {
